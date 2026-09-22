@@ -30,6 +30,33 @@ final class Server {
     /// Server nichts über Startseite oder Bibliothek wissen muss.
     var startseiteHTML: () -> String = { "<h1>Startseite fehlt</h1>" }
 
+    /// Laeuft hier schon eine Lernkiste? Zwei gleichzeitig gehen nicht: beide
+    /// brauchen denselben Port, und die zweite bliebe leer. Wir klopfen kurz an —
+    /// antwortet jemand, ist bereits eine offen.
+    static func laeuftSchon() -> Bool {
+        let verbindung = socket(AF_INET, SOCK_STREAM, 0)
+        guard verbindung >= 0 else { return false }
+        defer { close(verbindung) }
+
+        // Nicht ewig warten: auf dem eigenen Rechner antwortet ein offener
+        // Port sofort, ein geschlossener ebenso sofort mit einer Absage.
+        var frist = timeval(tv_sec: 0, tv_usec: 300_000)
+        setsockopt(verbindung, SOL_SOCKET, SO_SNDTIMEO, &frist,
+                   socklen_t(MemoryLayout<timeval>.size))
+
+        var adresse = sockaddr_in()
+        adresse.sin_len    = UInt8(MemoryLayout<sockaddr_in>.size)
+        adresse.sin_family = sa_family_t(AF_INET)
+        adresse.sin_port   = Server.port.bigEndian
+        adresse.sin_addr.s_addr = inet_addr("127.0.0.1")
+
+        return withUnsafePointer(to: &adresse) { zeiger in
+            zeiger.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                connect(verbindung, sa, socklen_t(MemoryLayout<sockaddr_in>.size)) == 0
+            }
+        }
+    }
+
     func starten() throws {
         let params = NWParameters.tcp
         params.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback),

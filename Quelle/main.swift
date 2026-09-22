@@ -4,6 +4,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var fenster: Fenster?
 
     func applicationDidFinishLaunching(_ note: Notification) {
+        // Eine zweite Lernkiste koennte den Port nicht bekommen und bliebe ein
+        // leeres Fenster. Also gar nicht erst starten, sondern erklaeren warum.
+        if Server.laeuftSchon() {
+            let hinweis = NSAlert()
+            hinweis.messageText = "Lernkiste läuft bereits"
+            hinweis.informativeText =
+                "Es ist schon ein Lernkiste-Fenster offen — wechsle einfach dorthin.\n\n"
+                + "Zwei Fenster gleichzeitig gehen nicht: beide bräuchten denselben "
+                + "internen Zugang, und das zweite bliebe leer."
+            hinweis.addButton(withTitle: "Verstanden")
+            hinweis.runModal()
+            NSApp.terminate(nil)
+            return
+        }
+
         menueBauen()
         let f = Fenster()
         f.showWindow(nil)
