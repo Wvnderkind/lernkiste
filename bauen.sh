@@ -17,6 +17,10 @@ swiftc -O -o "$ZIEL/MacOS/Lernkiste" \
 
 echo "→ Ressourcen kopieren"
 cp Ressourcen/tokens.css "$ZIEL/Resources/"
+# Der gemeinsame Motor der Lernseiten. Er liegt hier im Programm und wird
+# beim Start nach Seiten/_motor/ gespiegelt — so hat jede Lernseite denselben
+# Stand, egal wer die App installiert.
+cp Ressourcen/lernkiste.js Ressourcen/lernkiste.css "$ZIEL/Resources/"
 [ -f Ressourcen/Lernkiste.icns ] && cp Ressourcen/Lernkiste.icns "$ZIEL/Resources/"
 
 echo "→ Info.plist schreiben"

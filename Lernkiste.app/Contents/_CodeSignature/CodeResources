@@ -8,6 +8,14 @@
 		<data>
 		QUeha3DnQl6mdZVjXrTy9FvMwKw=
 		</data>
+		<key>Resources/lernkiste.css</key>
+		<data>
+		l2V2ZoFsaufnsTB48iKN5gnWSmI=
+		</data>
+		<key>Resources/lernkiste.js</key>
+		<data>
+		124ofTTYB2x4J3jFBh3PL0fGt60=
+		</data>
 		<key>Resources/tokens.css</key>
 		<data>
 		nZjr04n+y4JlUKfzAW5/1nUgylM=
@@ -20,6 +28,20 @@
 			<key>hash2</key>
 			<data>
 			s5+2MSndlyQNlWequbYbvqFQEgq1oWQ1W4O+8XN/pLM=
+			</data>
+		</dict>
+		<key>Resources/lernkiste.css</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			91mTiDLgyU/SkOcjQRt6LXtMQtS+zSo6uA701S8Ch4U=
+			</data>
+		</dict>
+		<key>Resources/lernkiste.js</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			3J1oQmN+HDTgDiAKjleDxE3z4njtCJZ/cMqz+d58sro=
 			</data>
 		</dict>
 		<key>Resources/tokens.css</key>

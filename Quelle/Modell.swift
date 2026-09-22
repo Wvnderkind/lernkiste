@@ -27,11 +27,32 @@ enum Orte {
     static let konfigDatei   = daten.appendingPathComponent("konfiguration.json")
     static let zustandDatei  = daten.appendingPathComponent("zustand.json")
 
+    /// Der gemeinsame Motor aller Lernseiten. Er liegt im Programm und wird
+    /// hierher gespiegelt, damit jede Seite ihn ueber ../../_motor/ laden kann —
+    /// im Programmfenster genauso wie beim Doppelklick im Finder.
+    static let motor = seiten.appendingPathComponent("_motor")
+    static let motorDateien = ["lernkiste.js", "lernkiste.css"]
+
     static func vorbereiten() {
-        for ordner in [daten, seiten, fortschritt, gifs]
+        for ordner in [daten, seiten, fortschritt, gifs, motor]
                         + gifAnlaesse.map({ gifs.appendingPathComponent($0) }) {
             try? FileManager.default.createDirectory(at: ordner,
                                                      withIntermediateDirectories: true)
+        }
+        motorSpiegeln()
+    }
+
+    /// Nur schreiben, wenn sich wirklich etwas geaendert hat: so bleibt das
+    /// Aenderungsdatum stabil und ein laufender Browser-Cache wird nicht unnoetig
+    /// entwertet. Das Programm ist die Quelle — eine Kopie hier wird ueberschrieben.
+    private static func motorSpiegeln() {
+        let fm = FileManager.default
+        for name in motorDateien {
+            guard let quelle = Bundle.main.url(forResource: name, withExtension: nil),
+                  let neu = try? Data(contentsOf: quelle) else { continue }
+            let ziel = motor.appendingPathComponent(name)
+            if let alt = try? Data(contentsOf: ziel), alt == neu { continue }
+            try? neu.write(to: ziel)
         }
     }
 }
@@ -81,6 +102,9 @@ enum Bibliothek {
         for fachURL in fachOrdner.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
             guard istOrdner(fachURL) else { continue }
             let fachName = fachURL.lastPathComponent
+            // Ordner mit fuehrendem _ sind Werkstatt, kein Fach: dort liegt der
+            // gemeinsame Motor (_motor/lernkiste.js und .css), den alle Seiten laden.
+            guard !fachName.hasPrefix("_") else { continue }
             var themen: [Thema] = []
 
             let themaOrdner = (try? fm.contentsOfDirectory(at: fachURL,
@@ -90,6 +114,7 @@ enum Bibliothek {
             for themaURL in themaOrdner.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
                 guard istOrdner(themaURL) else { continue }
                 let themaName = themaURL.lastPathComponent
+                guard !themaName.hasPrefix("_") else { continue }
 
                 let dateien = (try? fm.contentsOfDirectory(at: themaURL,
                                                            includingPropertiesForKeys: [.contentModificationDateKey],

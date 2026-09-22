@@ -33,7 +33,7 @@ Fehlt dir Stoff, lies gezielt aus den Quellpfaden, die im Fachprofil stehen (Vor
 Markiere prüfungsrelevante Punkte: was in Altklausuren wiederholt vorkam, gehört hervorgehoben (`.hotspot`-Box oder ⭐-Marker).
 
 ### Phase 3 — Bauen
-Eine einzelne self-contained `.html`-Datei. Alles inline: CSS, JavaScript, SVG. **Keine CDNs, keine externen Fonts, keine Netzwerkzugriffe** — die Seite muss offline per Doppelklick funktionieren.
+Eine `.html`-Datei, die den **gemeinsamen Motor** lädt (Abschnitt „Auf dem Motor bauen"). Du schreibst kein eigenes CSS und kein eigenes Übungs-JavaScript mehr — nur Kopfdaten, Merkkästen und die Aufgabenliste. **Keine CDNs, keine externen Fonts, keine Netzwerkzugriffe** — die Seite muss offline per Doppelklick funktionieren.
 
 ### Phase 4 — Prüfen (Pflicht, siehe „Qualitätskontrolle")
 JS-Syntaxcheck **und** Sichtprüfung im Browser, in beiden Themes.
@@ -122,129 +122,87 @@ In den `<head>`, damit die App die Seite erkennt und einsortiert:
 Die `id` ist `<fach>/<themengebiet>/<slug>`: klein, ohne Umlaute, ohne Leerzeichen —
 und sie muss zum Ablageort passen. Ändert sich der Inhalt grundlegend, `version` hochzählen.
 
-### Farben nur über Tokens — Pflicht
-Nie eine Farbe direkt an ein Element schreiben, immer über eine Variable.
-Diese Token-Blöcke **unverändert** übernehmen (Palette „Schiefer"):
+### Auf dem Motor bauen — Pflicht
 
-```css
-:root{                                 /* dunkel = Standard */
-  --bg:#0f1011;      --surface:#191b1c;   --surface-2:#232628;
-  --line:#2f3335;    --text:#e8eaea;      --text-dim:#949a9c;
-  --accent:#c9683c;  --accent-soft:#25190f;
-  --gold:#cba14e;    --red:#d95f4e;       --orange:#d2823f;
-  --green:#4f9e7c;   --teal:#4b9aa3;      --violet:#9b8ec4;
-  --ok:#4f9e7c;      --no:#d95f4e;
-  --shadow:0 2px 14px rgba(0,0,0,.55);
-}
-:root[data-theme="light"]{
-  --bg:#f7f7fb;      --surface:#ffffff;   --surface-2:#eef0f7;
-  --line:#d3d7e6;    --text:#1a1a2e;      --text-dim:#5a5f7a;
-  --accent:#a8512a;  --accent-soft:#f7e6dc;
-  --gold:#8a6a1e;    --red:#c02626;       --orange:#a85b00;
-  --green:#1a7a42;   --teal:#1f6f78;      --violet:#6a3fc0;
-  --ok:#1a7a42;      --no:#c02626;
-  --shadow:0 2px 10px rgba(30,40,80,.10);
-}
-body{ background:var(--bg); color:var(--text);
-      font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+Das gesamte Übungsverhalten liegt im gemeinsamen Motor unter `Seiten/_motor/`.
+Du baust **nichts** davon selbst nach. In den `<head>`, immer relativ:
+
+```html
+<link rel="stylesheet" href="../../_motor/lernkiste.css">
+<script src="../../_motor/lernkiste.js"></script>
 ```
 
-`--accent-soft` ist im Dunkelmodus sehr dunkel: Flächenfarbe hinter hellem Text, **nie** Textfarbe.
-Brauchst du mehrere Kategoriefarben nebeneinander, nimm sie in dieser Reihenfolge und
-höchstens fünf auf einmal: `--accent`, `--teal`, `--gold`, `--green`, `--violet`.
+Der Motor bringt mit: Farbtokens für beide Modi, alle Klassen (`.box.merksatz`,
+`.falle`, `.esel`, `.klinik`, `.hotspot`, `.card`, `.formel`, `.step` …),
+Fortschrittsblock, Balken, Kategoriefilter, „Nur meine Wackelkandidaten",
+Zurücksetzen, Enter-Steuerung, Speichern im SPEC-Format, Tagespensum,
+Abschlussbildschirm und GIFs. Eigene `<style>`- oder `<script>`-Blöcke mit
+Übungslogik sind ein Fehler.
 
-**Das gilt auch im SVG:** `fill="var(--surface)"`, `stroke="var(--accent)"`, Textfarben `fill="var(--text)"`.
-Ein SVG mit fest eingebauten Farben ist im anderen Modus unlesbar — das ist der häufigste Fehler.
-Pfeil-Marker brauchen dieselbe Behandlung.
+In `<body>` kommen nur die Merkkästen — der Motor schiebt sie automatisch unter
+die Übung. Danach **ein** Skriptblock:
 
-Kontrast nach **WCAG AA** in *beiden* Modi. Information nie allein über Farbe transportieren —
-immer zusätzlich Text oder Symbol.
+```html
+<script>
+Lernseite.start({
+  id: "chemie/saeure-base/ph-und-titration",   // identisch mit dem Meta-Block
+  version: 1,
+  untertitel: "Ein Satz, der sagt, wofür die Seite gut ist.",
+  standard: { ziel: 20 },
+  tagesplan: { "2026-10-01": { ziel: 30, kategorien: ["Puffer rechnen"] } },
+  schemata: { titration: "<svg …>" },
+  tabellen:  { pks: { kopfspalte: "Säure", spalten: ["Base", "pK<sub>S</sub>"] } },
+  aufgaben: [ /* siehe unten */ ]
+});
+</script>
+```
 
-### Hell/Dunkel — kein eigener Umschalter mehr
-Den Modus steuert die App über `document.documentElement.dataset.theme`. Die Seite baut
-**keinen** eigenen Umschalter mehr ein und schreibt kein `lern-theme` in den Speicher.
-Ohne App bleibt es beim Standard (dunkel) — das ist richtig so.
+### Die vier Übungsarten
 
-### Fortschritt speichern — genau ein Schlüssel
-Die App liest den Fortschritt automatisch aus der Seite aus und legt ihn als Datei ab.
-Dafür muss das Format exakt stimmen (Einzelheiten in der SPEC, §2):
+Jede Aufgabe: `id` (seitenweit eindeutig), `art`, `kategorie`, dazu wahlweise
+`hinweis` (Tipp vorab) und `merke` (Begründung nach dem Prüfen — die ist Pflicht,
+solange nicht schon die Lösung selbst erklärt, *warum*).
 
 ```js
-const SEITEN_ID = "chemie/redox/oxidationszahlen";
-const VERSION   = 1;
-const SPEICHER  = "lern:" + SEITEN_ID + "@v" + VERSION;
-```
-Inhalt:
-```json
-{
-  "items": { "<item-id>": { "sass": 3, "sassNicht": 1,
-                            "letzter": "sass", "zuletzt": "2026-09-21" } },
-  "gesamt": 30,
-  "tagespensum": { "datum": "2026-09-21", "ziel": 20, "geschafft": 12, "treffer": 9 },
-  "zuletztGeoeffnet": "2026-09-21T14:32:00"
-}
-```
-`letzter` ist **Pflicht** — daran erkennt die App die Wackelkandidaten (letzter Versuch daneben).
-Alle Zugriffe in `try/catch` mit stillem Rückfall auf den Arbeitsspeicher.
-**Keinen Export-Knopf und keine Download-Datei mehr** — das erledigt die App.
+{ id:"halb", art:"karte", kategorie:"Formel wählen",
+  frage:"Welcher pH herrscht am Halbäquivalenzpunkt?",
+  antwort:"pH = pK<sub>S</sub> — c<sub>Base</sub> = c<sub>Säure</sub>, der lg wird 0." }
 
-### Tagespensum — Pflicht
-Jede Übungsseite hat ein Tagesziel, damit klar ist, wann Schluss ist:
+{ id:"ph-hcl", art:"rechnung", kategorie:"pH berechnen",
+  frage:"pH einer HCl-Lösung mit c₀ = 0,01 mol/l?",
+  felder:[{ label:"pH =", loesung:"2", toleranz:0.05 }],
+  schritte:["Sehr starke Säure → pH = −lg(z · c₀)", "z = 1 → pH = −lg 0,01 = 2"] }
 
-```js
-const TAGESPLAN = { "2026-09-21": 20 };          // von Claude gepflegt
-const STANDARD  = 15;                            // Rückfall
-const ziel = window.Lernkiste?.tagesplan?.(SEITEN_ID)?.ziel
-          ?? TAGESPLAN[heute()] ?? STANDARD;
+{ id:"kurve-aequi", art:"svg", kategorie:"Titrationskurve",
+  schema:"titration", teil:"aequi", ziel:"Klick auf: Äquivalenzpunkt (τ = 1)" }
+
+{ id:"pks-essig", art:"tabelle", kategorie:"pKS-Tabelle", tabelle:"pks",
+  kopf:"CH<sub>3</sub>COOH",
+  zellen:[{ loesung:"CH3COO-", alternativen:["Acetat"], art:"text" },
+          { loesung:"4,75" }] }
 ```
-Ist das Ziel erreicht: deutlich sichtbar „**Geschafft für heute**" melden, Weiterüben erlauben.
+
+Felder und Zellen: ohne `art:"text"` wird als **Zahl** verglichen (Komma und
+`3,98e-4` erlaubt), ohne `toleranz` auf die Stellen der Lösung gerundet,
+mindestens zwei. Bei Text zählen Groß-/Kleinschreibung und Umlaute nicht.
+Im Text darf HTML stehen (`<sub>`, `&auml;`) — **in Kategorienamen nicht**, die
+sind zugleich Speicherschlüssel.
+
+Für `svg` braucht jedes anklickbare Element ein `data-teil="…"`; Trefferflächen
+mindestens 26 px, Farben über `var(--…)`, die Kurve selbst bekommt
+`pointer-events="none"`. Einen Prüfen-Knopf gibt es hier nicht — der Klick ist
+die Antwort.
+
+### Was trotzdem deine Aufgabe bleibt
+
+Der Motor macht die Mechanik, nicht die Didaktik. Bei dir bleibt: die richtige
+Auswahl der Aufgaben, belegter Fachinhalt, eine ehrliche Begründung zu jeder
+Lösung, die Merkkästen, und bei `svg` ein Diagramm, das man wirklich lesen kann.
 
 ### Brücke zur App — optional, nie Voraussetzung
-Läuft die Seite in der Lernkiste, gibt es `window.Lernkiste` (`version`, `tagesplan(id)`,
-`fertig(ergebnis)`, `theme`). Jeder Zugriff darauf **immer** mit `?.` absichern —
-im Browser allein existiert das Objekt nicht, und die Seite muss trotzdem voll funktionieren.
-
-### Fortschrittsleiste im Header — Pflicht
-Ganz oben, immer sichtbar:
-
-> **14 von 22 sitzen** · 5 wackeln · 3 noch offen · heute 12/20  [Balken]  `[Nur Wackelkandidaten]` `[Zurücksetzen]`
-
-Kein `alert()`, `confirm()` oder `prompt()` — in der App erscheinen die nicht zuverlässig.
-Das Zurücksetzen daher zweistufig im Knopf selbst lösen („Zurücksetzen" → „Wirklich? Ja / Abbrechen").
-
-### Seitenaufbau
-```
-1. Schlanke Kopfzeile: H1 + ein Satz Untertitel (Titel und Fach zeigt schon die App)
-2. Fortschrittsleiste + Modus-Knöpfe
-3. Hauptteil je nach Seitentyp (Diagramm / Tabelle / Drill / Schritte / Zuordnung)
-4. Legende, falls es ein Diagramm gibt
-5. Info-Boxen: Merksatz ★ · Klinik ☤ · Prüfungsfalle ⚠ · Eselsbrücke 🔑 · Hotspot ⭐
-6. Fußzeile: Quelle(n) + Erstelldatum
-```
-
-### Info-Boxen
-```css
-.box{ max-width:960px; margin:.75rem auto; padding:.85rem 1.1rem;
-      border-radius:8px; font-size:14px; line-height:1.55;
-      background:var(--surface); border-left:3px solid var(--line); }
-.merksatz{ border-left-color:var(--gold);   }
-.klinik  { border-left-color:var(--red);    }
-.falle   { border-left-color:var(--orange); }
-.esel    { border-left-color:var(--green);  }
-.hotspot { border-left-color:var(--violet); }
-.box-title{ font-weight:700; margin-bottom:.35rem; }
-```
-Die Einfärbung sitzt am Rand, der Text bleibt `var(--text)` — so ist die Box in beiden Modi lesbar.
-
-### Druckansicht
-```css
-@media print{
-  .no-print, .progress-bar, button{ display:none !important; }
-  :root{ --bg:#fff; --surface:#fff; --text:#000; --text-dim:#444; }
-  .box{ border:1px solid #999; break-inside:avoid; }
-  details{ display:block; } details > *{ display:block !important; }  /* alles aufgedeckt drucken */
-}
-```
+Läuft die Seite in der Lernkiste, gibt es `window.Lernkiste` (`version`,
+`tagesplan(id)`, `fertig(ergebnis)`, `theme`, `gif(id, anlass)`). Darum kümmert
+sich der Motor — du rührst das Objekt nicht selbst an.
 
 ---
 
@@ -333,7 +291,11 @@ DOM-Fehler zur Laufzeit sind in Ordnung (es gibt kein `document`). Entscheidend:
 ### 2. Sichtprüfung im Browser — die Seite wirklich ansehen
 Nicht optional. Es sind schon Seiten mit übereinanderliegenden Texten ausgeliefert worden, weil niemand hingeschaut hat.
 
-1. `mcp__Claude_Browser__navigate` auf `file:///Users/<benutzername>/Documents/Lernkiste/Seiten/…` (Leerzeichen als `%20`).
+1. Kleinen Server starten und **darüber** öffnen — über `file://` lädt der eingebaute Browser die Seite nur als Standbild, das Skript läuft nicht:
+   ```bash
+   cd ~/Documents/Lernkiste/Seiten && nohup python3 -m http.server 8799 --bind 127.0.0.1 >/dev/null 2>&1 &
+   ```
+   Dann `mcp__Claude_Browser__navigate` auf `http://127.0.0.1:8799/<Fach>/<Thema>/<datei>.html` (Leerzeichen als `%20`). Am Ende `pkill -f "http.server 8799"`.
 2. `mcp__Claude_Browser__read_console_messages` mit `onlyErrors: true` → **muss leer sein**.
 3. `mcp__Claude_Browser__computer` mit `action: "screenshot"` → anschauen und prüfen:
    - Texte überlappen nicht, nichts ist abgeschnitten, nichts läuft aus seinem Kasten
@@ -369,6 +331,6 @@ Die Datei am Ende per `open "<pfad>"` öffnen.
 
 ## Grenzen
 - Nichts löschen und nichts überschreiben ohne Rückfrage — alte Fassungen umbenennen statt ersetzen.
-- Keine externen Ressourcen einbinden (CDN, Google Fonts, Bilder aus dem Netz). Alles inline.
+- Keine externen Ressourcen einbinden (CDN, Google Fonts, Bilder aus dem Netz). Alles inline — einzige Ausnahme ist der Motor aus `../../_motor/`, der liegt im selben Ordnerbaum.
 - Keine erfundenen Fachinhalte, keine erfundenen Quellenangaben.
 - Fachbegriffe in der Abschlussmeldung kurz erklären — setze keine Entwicklerkenntnisse voraus.
