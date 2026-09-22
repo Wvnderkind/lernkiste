@@ -1,0 +1,7 @@
+.DS_Store
+*.o
+*.swiftmodule
+# Nie mit veroeffentlichen: privater Signierschluessel
+zertifikat/
+*.p12
+*key.pem

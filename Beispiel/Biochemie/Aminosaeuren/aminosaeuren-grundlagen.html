@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aminosäuren — Seitenketten und Codes</title>
+
+<meta name="lernkiste-id"      content="biochemie/aminosaeuren/aminosaeuren-grundlagen">
+<meta name="lernkiste-titel"   content="Aminosäuren — Seitenketten und Codes">
+<meta name="lernkiste-typ"     content="drill">
+<meta name="lernkiste-version" content="1">
+
+<style>
+:root{
+  --bg:#0f1011;      --surface:#191b1c;   --surface-2:#232628;
+  --line:#2f3335;    --text:#e8eaea;      --text-dim:#949a9c;
+  --accent:#c9683c;  --accent-soft:#25190f;
+  --gold:#cba14e;    --red:#d95f4e;       --orange:#d2823f;
+  --green:#4f9e7c;   --teal:#4b9aa3;      --violet:#9b8ec4;
+  --ok:#4f9e7c;      --no:#d95f4e;
+  --shadow:0 2px 14px rgba(0,0,0,.55);
+}
+:root[data-theme="light"]{
+  --bg:#f7f7fb;      --surface:#ffffff;   --surface-2:#eef0f7;
+  --line:#d3d7e6;    --text:#1a1a2e;      --text-dim:#5a5f7a;
+  --accent:#a8512a;  --accent-soft:#f7e6dc;
+  --gold:#8a6a1e;    --red:#c02626;       --orange:#a85b00;
+  --green:#1a7a42;   --teal:#1f6f78;      --violet:#6a3fc0;
+  --ok:#1a7a42;      --no:#c02626;
+  --shadow:0 2px 10px rgba(30,40,80,.10);
+}
+html, body{ -webkit-user-select: none; user-select: none; }
+input, textarea, [contenteditable="true"]{ -webkit-user-select: text; user-select: text; }
+::selection{ background: rgba(255,255,255,.16); }
+:root[data-theme="light"] ::selection{ background: rgba(0,0,0,.12); }
+
+*{ box-sizing:border-box; }
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size:16px; line-height:1.5;
+}
+.wrap{ max-width:980px; margin:0 auto; padding:0 20px 40px; }
+
+/* ---- Kopfzeile mit Tagespensum ---- */
+.leiste{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:14px 0 12px; border-bottom:1px solid var(--line); margin-bottom:22px;
+}
+.balken{ flex:1 1 220px; height:8px; border-radius:6px; background:var(--surface-2); overflow:hidden; min-width:160px; }
+.balken > i{ display:block; height:100%; width:0; background:var(--accent); transition:width .25s ease; }
+.zahl{ font-variant-numeric:tabular-nums; color:var(--text-dim); font-size:14px; white-space:nowrap; }
+.hinweis{ flex-basis:100%; color:var(--text-dim); font-size:14px; }
+
+/* ---- Moduswahl ---- */
+.modi{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.modi button{
+  background:var(--surface); color:var(--text-dim); border:1px solid var(--line);
+  border-radius:8px; padding:6px 12px; font-size:14px; cursor:pointer; font-family:inherit;
+}
+.modi button[aria-pressed="true"]{ color:var(--text); border-color:var(--accent); background:var(--accent-soft); }
+
+/* ---- Frage ---- */
+.karte{
+  background:var(--surface); border:1px solid var(--line); border-radius:14px;
+  padding:26px 24px; box-shadow:var(--shadow);
+}
+.frage{ font-size:20px; font-weight:600; margin:0 0 4px; }
+.unterzeile{ color:var(--text-dim); font-size:14px; margin:0 0 20px; }
+.optionen{ display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
+.opt{
+  background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+  border-radius:10px; padding:12px 14px; font-size:16px; text-align:left;
+  cursor:pointer; font-family:inherit; transition:border-color .12s, background .12s;
+}
+.opt:hover{ border-color:var(--accent); }
+.opt[aria-pressed="true"]{ border-color:var(--accent); background:var(--accent-soft); }
+.opt.richtig{ border-color:var(--ok); background:var(--ok); color:#fff; }
+.opt.falsch{ border-color:var(--no); background:var(--no); color:#fff; }
+.opt:disabled{ cursor:default; }
+
+.rueck{ margin-top:18px; padding:12px 14px; border-radius:10px; font-size:15px; display:none; }
+.rueck.an{ display:block; }
+.rueck.ok{ background:var(--accent-soft); border:1px solid var(--ok); }
+.rueck.no{ background:var(--accent-soft); border:1px solid var(--no); }
+
+.knopfreihe{ display:flex; gap:10px; margin-top:20px; }
+.haupt{
+  background:var(--accent); color:#fff; border:none; border-radius:10px;
+  padding:11px 22px; font-size:16px; font-weight:600; cursor:pointer; font-family:inherit;
+}
+.haupt:disabled{ opacity:.45; cursor:default; }
+.neben{
+  background:transparent; color:var(--text-dim); border:1px solid var(--line);
+  border-radius:10px; padding:11px 18px; font-size:15px; cursor:pointer; font-family:inherit;
+}
+
+/* ---- Abschluss ---- */
+.schluss{ text-align:center; padding:40px 20px; }
+.schluss h2{ margin:16px 0 6px; font-size:24px; }
+.schluss p{ color:var(--text-dim); margin:0 0 22px; }
+.fertig-icon{ font-size:64px; line-height:1; }
+.schluss img{ max-width:320px; border-radius:12px; }
+
+/* ---- GIF-Einblendung unten rechts ---- */
+#gifToast{
+  position:fixed; right:18px; bottom:18px; width:220px; z-index:50;
+  background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:10px; box-shadow:var(--shadow); display:none;
+}
+#gifToast.an{ display:block; }
+#gifToast img{ width:100%; border-radius:8px; display:block; }
+#gifToast .txt{ font-size:13px; color:var(--text-dim); margin-top:7px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="leiste">
+    <span class="zahl" id="pensum">Heute geschafft 0 / 20</span>
+    <span class="balken"><i id="balken"></i></span>
+    <span class="zahl" id="sitzt">0 von 20 sitzen</span>
+    <span class="hinweis" id="hinweis"></span>
+  </div>
+
+  <div class="modi" id="modi">
+    <button data-modus="gemischt" aria-pressed="true">Gemischt</button>
+    <button data-modus="klasse"   aria-pressed="false">Nur Seitenketten</button>
+    <button data-modus="code"     aria-pressed="false">Nur Codes</button>
+  </div>
+
+  <div class="karte" id="karte">
+    <p class="frage" id="frage">…</p>
+    <p class="unterzeile" id="unterzeile"></p>
+    <div class="optionen" id="optionen"></div>
+    <div class="rueck" id="rueck"></div>
+    <div class="knopfreihe">
+      <button class="haupt" id="btnPruefen" disabled>Prüfen</button>
+      <button class="haupt" id="btnWeiter" hidden>Weiter</button>
+    </div>
+  </div>
+
+  <div class="karte schluss" id="schluss" hidden>
+    <div id="schlussBild"></div>
+    <h2>Geschafft für heute</h2>
+    <p id="schlussText"></p>
+    <button class="neben" id="btnTrotzdem">Trotzdem weiterüben</button>
+  </div>
+
+</div>
+
+<div id="gifToast"><img alt=""><div class="txt"></div></div>
+
+<script>
+/* ============================================================
+   Beispielseite für die Lernkiste.
+   Sie zeigt alles, was der Bauplan (SPEC-Lernseiten.md) verlangt:
+   Meta-Block, EIN Fortschritts-Schlüssel, Tagespensum, GIF-Brücke,
+   Enter-Steuerung — und sie läuft auch ohne die App im Browser.
+   ============================================================ */
+
+const SEITEN_ID = 'biochemie/aminosaeuren/aminosaeuren-grundlagen';
+const VERSION   = 1;
+const KEY  = 'lern:' + SEITEN_ID + '@v' + VERSION;
+const EKEY = 'lern:' + SEITEN_ID + '@v' + VERSION + '-einstellungen';
+
+/* ---- Theme: die App gewinnt, sonst gespeicherte Wahl, sonst dunkel ---- */
+if (!window.Lernkiste) {
+  document.documentElement.dataset.theme = localStorage.getItem('lern-theme') || 'dark';
+}
+
+/* ---- Der Stoff ---- */
+const KLASSEN = ['unpolar', 'aromatisch', 'schwefelhaltig', 'polar neutral', 'sauer', 'basisch'];
+const AS = [
+  {id:'ala', name:'Alanin',       c3:'Ala', c1:'A', klasse:'unpolar',        merk:'kleinste unpolare Seitenkette: eine Methylgruppe'},
+  {id:'gly', name:'Glycin',       c3:'Gly', c1:'G', klasse:'unpolar',        merk:'nur ein H als Rest — als einzige nicht chiral'},
+  {id:'val', name:'Valin',        c3:'Val', c1:'V', klasse:'unpolar',        merk:'verzweigtkettig, essenziell'},
+  {id:'leu', name:'Leucin',       c3:'Leu', c1:'L', klasse:'unpolar',        merk:'verzweigtkettig, essenziell'},
+  {id:'ile', name:'Isoleucin',    c3:'Ile', c1:'I', klasse:'unpolar',        merk:'verzweigtkettig, zwei Chiralitätszentren'},
+  {id:'pro', name:'Prolin',       c3:'Pro', c1:'P', klasse:'unpolar',        merk:'Ring zurück zum N — knickt die Kette, „Helixbrecher“'},
+  {id:'phe', name:'Phenylalanin', c3:'Phe', c1:'F', klasse:'aromatisch',     merk:'Benzolring, rein unpolar-aromatisch'},
+  {id:'trp', name:'Tryptophan',   c3:'Trp', c1:'W', klasse:'aromatisch',     merk:'Indolring, die größte Aminosäure'},
+  {id:'tyr', name:'Tyrosin',      c3:'Tyr', c1:'Y', klasse:'aromatisch',     merk:'Phenolring mit OH — aromatisch und dazu polar'},
+  {id:'met', name:'Methionin',    c3:'Met', c1:'M', klasse:'schwefelhaltig', merk:'Thioether, Startaminosäure der Translation'},
+  {id:'cys', name:'Cystein',      c3:'Cys', c1:'C', klasse:'schwefelhaltig', merk:'SH-Gruppe — bildet Disulfidbrücken'},
+  {id:'ser', name:'Serin',        c3:'Ser', c1:'S', klasse:'polar neutral',  merk:'OH-Gruppe, Angriffspunkt für Phosphorylierung'},
+  {id:'thr', name:'Threonin',     c3:'Thr', c1:'T', klasse:'polar neutral',  merk:'OH-Gruppe an einem zweiten Chiralitätszentrum'},
+  {id:'asn', name:'Asparagin',    c3:'Asn', c1:'N', klasse:'polar neutral',  merk:'Säureamid — Ankerpunkt der N-Glykosylierung'},
+  {id:'gln', name:'Glutamin',     c3:'Gln', c1:'Q', klasse:'polar neutral',  merk:'Säureamid, wichtigster Stickstoff-Transporter im Blut'},
+  {id:'asp', name:'Aspartat',     c3:'Asp', c1:'D', klasse:'sauer',          merk:'zweite COOH-Gruppe, bei pH 7 negativ geladen'},
+  {id:'glu', name:'Glutamat',     c3:'Glu', c1:'E', klasse:'sauer',          merk:'eine CH2-Gruppe länger als Aspartat'},
+  {id:'lys', name:'Lysin',        c3:'Lys', c1:'K', klasse:'basisch',        merk:'endständige NH2-Gruppe, bei pH 7 positiv'},
+  {id:'arg', name:'Arginin',      c3:'Arg', c1:'R', klasse:'basisch',        merk:'Guanidinogruppe — die basischste Seitenkette'},
+  {id:'his', name:'Histidin',     c3:'His', c1:'H', klasse:'basisch',        merk:'Imidazolring, pKs ≈ 6 — puffert im physiologischen Bereich'}
+];
+
+/* ---- Tagesplan: eingebaute Voreinstellung, die App darf sie ergänzen ---- */
+const STANDARD = { ziel: 20, modus: 'gemischt', hinweis: '' };
+const TAGESPLAN = {
+  /* Beispiel: '2026-09-22': { ziel: 30, hinweis: 'Heute die sauren und basischen gründlich.' } */
+};
+
+function heute(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function nurGesetzte(o){
+  const r = {};
+  for (const k in (o||{})) if (o[k] !== null && o[k] !== undefined) r[k] = o[k];
+  return r;
+}
+
+/* ---- Eigene Wahl schlägt den Tagesplan ---- */
+const Eigene = {
+  load(){ try { return JSON.parse(localStorage.getItem(EKEY) || 'null') || {}; } catch(e){ return {}; } },
+  merken(feld, wert){
+    const o = Eigene.load(); o[feld] = wert;
+    try { localStorage.setItem(EKEY, JSON.stringify(o)); } catch(e){}
+  }
+};
+
+let planVonApp = null;
+try {
+  if (window.Lernkiste && window.Lernkiste.tagesplan) planVonApp = window.Lernkiste.tagesplan(SEITEN_ID);
+} catch(e) { planVonApp = null; }   // die Seite muss auch ohne App laufen
+const PLAN = Object.assign({}, STANDARD,
+                           nurGesetzte(TAGESPLAN[heute()]),
+                           nurGesetzte(planVonApp),
+                           nurGesetzte(Eigene.load()));
+
+/* ---- Fortschritt: genau EIN Schlüssel, Format laut Bauplan ---- */
+const Stand = {
+  load(){
+    let o = null;
+    try { o = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){}
+    if (!o || typeof o !== 'object') o = {};
+    if (!o.items) o.items = {};
+    o.gesamt = AS.length;
+    if (!o.tagespensum || o.tagespensum.datum !== heute()) {
+      o.tagespensum = { datum: heute(), ziel: PLAN.ziel, geschafft: 0, treffer: 0 };
+    }
+    o.tagespensum.ziel = PLAN.ziel;
+    return o;
+  },
+  save(o){
+    o.zuletztGeoeffnet = new Date().toISOString().slice(0,19);
+    try { localStorage.setItem(KEY, JSON.stringify(o)); } catch(e){}
+  }
+};
+let stand = Stand.load();
+
+/* ---- Glückwunsch-GIFs: schmückendes Beiwerk, nie Voraussetzung ---- */
+const GIF = {
+  bild(anlass){
+    if (!window.Lernkiste || !window.Lernkiste.gif) return null;
+    try { return window.Lernkiste.gif(SEITEN_ID, anlass) || null; } catch(e){ return null; }
+  },
+  zeigen(anlass, text){
+    const url = GIF.bild(anlass);
+    if (!url) return;
+    const t = document.getElementById('gifToast');
+    t.querySelector('img').src = url;
+    t.querySelector('.txt').textContent = text;
+    t.classList.add('an');
+    clearTimeout(GIF._uhr);
+    GIF._uhr = setTimeout(() => t.classList.remove('an'), 5000);
+  }
+};
+const LOB = ['Zehn am Stück. Läuft.', 'Sauber durchgezogen.', 'Das sitzt.'];
+const GESCHAFFT = ['Der Wackelkandidat sitzt jetzt.', 'Endlich richtig — gut festgehalten.'];
+const AUFMUNTERN = ['Konzentrier dich mal.', 'Noch einmal in Ruhe ansehen.', 'Die holen wir uns.'];
+const zufall = a => a[Math.floor(Math.random() * a.length)];
+
+/* ---- Aufgaben bauen ---- */
+function eintrag(id){
+  return stand.items[id] || { sass:0, sassNicht:0, letzter:null, zuletzt:null };
+}
+function mischen(a){
+  const b = a.slice();
+  for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [b[i],b[j]] = [b[j],b[i]]; }
+  return b;
+}
+/* Wackelkandidaten zuerst, dann Unbekanntes, dann der Rest. */
+function naechsteAS(){
+  const wackler = AS.filter(a => eintrag(a.id).letzter === 'sassNicht');
+  const neu     = AS.filter(a => eintrag(a.id).letzter === null);
+  const rest    = AS.filter(a => eintrag(a.id).letzter === 'sass');
+  const topf = wackler.length && Math.random() < 0.5 ? wackler
+             : neu.length ? neu
+             : rest.length ? rest
+             : AS;
+  return zufall(topf);
+}
+function aufgabeBauen(){
+  const a = naechsteAS();
+  const arten = PLAN.modus === 'klasse' ? ['klasse']
+              : PLAN.modus === 'code'   ? ['c1', 'name']
+              : ['klasse', 'c1', 'name'];
+  const art = zufall(arten);
+
+  if (art === 'klasse') {
+    return { as:a, art, frage:'Wie ist die Seitenkette von ' + a.name + ' einzuordnen?',
+             unter:'Dreibuchstabencode ' + a.c3, optionen:KLASSEN.slice(), loesung:a.klasse };
+  }
+  if (art === 'c1') {
+    const falsche = mischen(AS.filter(x => x.id !== a.id)).slice(0,3).map(x => x.c1);
+    return { as:a, art, frage:'Welchen Einbuchstabencode hat ' + a.name + '?',
+             unter:'', optionen:mischen(falsche.concat([a.c1])), loesung:a.c1 };
+  }
+  const falsche = mischen(AS.filter(x => x.id !== a.id)).slice(0,3).map(x => x.name);
+  return { as:a, art, frage:'Welche Aminosäure steht hinter dem Code „' + a.c1 + '“?',
+           unter:'', optionen:mischen(falsche.concat([a.name])), loesung:a.name };
+}
+
+/* ---- Zustand der laufenden Frage ---- */
+let aufgabe = null, gewaehlt = null, ausgewertet = false, serie = 0, weiterUeben = false;
+
+function zeichnen(){
+  document.getElementById('frage').textContent = aufgabe.frage;
+  document.getElementById('unterzeile').textContent = aufgabe.unter;
+  const box = document.getElementById('optionen');
+  box.innerHTML = '';
+  aufgabe.optionen.forEach(text => {
+    const b = document.createElement('button');
+    b.className = 'opt'; b.type = 'button'; b.textContent = text;
+    b.setAttribute('aria-pressed', String(gewaehlt === text));
+    if (ausgewertet) {
+      b.disabled = true;
+      if (text === aufgabe.loesung) b.classList.add('richtig');
+      else if (text === gewaehlt)   b.classList.add('falsch');
+    } else {
+      b.addEventListener('click', () => { gewaehlt = text; zeichnen(); });
+    }
+    box.appendChild(b);
+  });
+  document.getElementById('btnPruefen').disabled = ausgewertet || gewaehlt === null;
+  document.getElementById('btnPruefen').hidden = ausgewertet;
+  document.getElementById('btnWeiter').hidden  = !ausgewertet;
+  leisteZeichnen();
+}
+
+function leisteZeichnen(){
+  const t = stand.tagespensum;
+  document.getElementById('pensum').textContent = 'Heute geschafft ' + t.geschafft + ' / ' + t.ziel;
+  document.getElementById('balken').style.width = Math.min(100, t.geschafft / t.ziel * 100) + '%';
+  const sitzen = AS.filter(a => eintrag(a.id).letzter === 'sass').length;
+  document.getElementById('sitzt').textContent = sitzen + ' von ' + AS.length + ' sitzen';
+  document.getElementById('hinweis').textContent = PLAN.hinweis || '';
+}
+
+/* ---- Prüfen: erst merken, dann zählen, dann sichern ---- */
+function pruefen(){
+  if (ausgewertet || gewaehlt === null) return;
+  const richtig = gewaehlt === aufgabe.loesung;
+  const e = eintrag(aufgabe.as.id);
+  const warWackler = (e.letzter === 'sassNicht');   // vor dem Überschreiben merken
+
+  if (richtig) e.sass = (e.sass || 0) + 1; else e.sassNicht = (e.sassNicht || 0) + 1;
+  e.letzter = richtig ? 'sass' : 'sassNicht';
+  e.zuletzt = heute();
+  stand.items[aufgabe.as.id] = e;
+
+  stand.tagespensum.geschafft++;
+  if (richtig) stand.tagespensum.treffer++;
+  Stand.save(stand);
+
+  const r = document.getElementById('rueck');
+  r.className = 'rueck an ' + (richtig ? 'ok' : 'no');
+  r.textContent = (richtig ? '✓ ' : '✗ ' + aufgabe.loesung + '. ') + aufgabe.as.name + ': ' + aufgabe.as.merk;
+
+  if (richtig) {
+    serie++;
+    if (warWackler) GIF.zeigen('meilenstein', zufall(GESCHAFFT));
+    else if (serie % 10 === 0) GIF.zeigen('meilenstein', zufall(LOB));
+  } else {
+    serie = 0;
+    if ((e.sassNicht || 0) >= 4 && (e.sassNicht || 0) % 3 === 1) GIF.zeigen('durchhaenger', zufall(AUFMUNTERN));
+  }
+
+  ausgewertet = true;
+  zeichnen();
+}
+
+function weiter(){
+  if (!weiterUeben && stand.tagespensum.geschafft >= stand.tagespensum.ziel) { abschluss(); return; }
+  naechste();
+}
+function naechste(){
+  aufgabe = aufgabeBauen(); gewaehlt = null; ausgewertet = false;
+  document.getElementById('rueck').className = 'rueck';
+  document.getElementById('karte').hidden = false;
+  document.getElementById('schluss').hidden = true;
+  zeichnen();
+}
+
+function abschluss(){
+  leisteZeichnen();   // auch ohne Frage muss die Kopfzeile stimmen
+  const t = stand.tagespensum;
+  const quote = t.geschafft ? Math.round(t.treffer / t.geschafft * 100) : 0;
+  document.getElementById('schlussText').textContent =
+    t.geschafft + ' Aufgaben, ' + t.treffer + ' davon richtig — Trefferquote ' + quote + ' %.';
+  const url = GIF.bild('fertig');
+  document.getElementById('schlussBild').innerHTML =
+    url ? '<img alt="" src="' + url + '">' : '<div class="fertig-icon">✅</div>';
+  document.getElementById('karte').hidden = true;
+  document.getElementById('schluss').hidden = false;
+  if (window.Lernkiste && window.Lernkiste.fertig) {
+    try { window.Lernkiste.fertig({ id:SEITEN_ID, geschafft:t.geschafft, treffer:t.treffer }); } catch(e){}
+  }
+}
+
+/* ---- Knöpfe ---- */
+document.getElementById('btnPruefen').addEventListener('click', pruefen);
+document.getElementById('btnWeiter').addEventListener('click', weiter);
+document.getElementById('btnTrotzdem').addEventListener('click', () => { weiterUeben = true; naechste(); });
+document.querySelectorAll('#modi button').forEach(b => {
+  b.addEventListener('click', () => {
+    PLAN.modus = b.dataset.modus;
+    Eigene.merken('modus', PLAN.modus);
+    document.querySelectorAll('#modi button').forEach(x =>
+      x.setAttribute('aria-pressed', String(x === b)));
+    naechste();
+  });
+});
+document.querySelectorAll('#modi button').forEach(b =>
+  b.setAttribute('aria-pressed', String(b.dataset.modus === PLAN.modus)));
+
+/* ---- Los ---- */
+if (stand.tagespensum.geschafft >= stand.tagespensum.ziel) abschluss(); else naechste();
+Stand.save(stand);
+</script>
+
+<script>
+/* Enter bringt die Seite genau einen Schritt weiter. */
+(function(){
+  function sichtbar(el){ return !!el && !el.disabled && el.offsetParent !== null; }
+  function klick(wurzel, wahl){
+    const el = (wurzel || document).querySelector(wahl);
+    if(!sichtbar(el)) return false;
+    el.click();
+    return true;
+  }
+  function schritt(){
+    if(klick(document, '#btnWeiter')) return true;
+    return klick(document, '#btnPruefen');
+  }
+  document.addEventListener('keydown', function(ev){
+    if(ev.key !== 'Enter' || ev.repeat || ev.isComposing) return;
+    if(ev.altKey || ev.metaKey || ev.ctrlKey) return;
+    const ziel = ev.target;
+    if(ziel && (ziel.tagName === 'TEXTAREA' || ziel.isContentEditable)) return;
+    if(ziel && ziel.tagName === 'INPUT' && ziel.hasAttribute('onkeydown')) return;
+    if(schritt()) ev.preventDefault();
+  });
+})();
+</script>
+</body>
+</html>

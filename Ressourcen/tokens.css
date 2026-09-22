@@ -1,0 +1,28 @@
+/* Lernkiste — Farbkanon. Quelle der Wahrheit für App und alle Lernseiten.
+   Variante "Schiefer": kühles Neutralgrau + Kupfer. Stand 21.09.2026. */
+:root{
+  --bg:#0f1011;      --surface:#191b1c;   --surface-2:#232628;
+  --line:#2f3335;    --text:#e8eaea;      --text-dim:#949a9c;
+  --accent:#c9683c;  --accent-soft:#25190f;
+  --gold:#cba14e;    --red:#d95f4e;       --orange:#d2823f;
+  --green:#4f9e7c;   --teal:#4b9aa3;      --violet:#9b8ec4;
+  --ok:#4f9e7c;      --no:#d95f4e;
+  --shadow:0 2px 14px rgba(0,0,0,.55);
+}
+:root[data-theme="light"]{
+  --bg:#f7f7fb;      --surface:#ffffff;   --surface-2:#eef0f7;
+  --line:#d3d7e6;    --text:#1a1a2e;      --text-dim:#5a5f7a;
+  --accent:#a8512a;  --accent-soft:#f7e6dc;
+  --gold:#8a6a1e;    --red:#c02626;       --orange:#a85b00;
+  --green:#1a7a42;   --teal:#1f6f78;      --violet:#6a3fc0;
+  --ok:#1a7a42;      --no:#c02626;
+  --shadow:0 2px 10px rgba(30,40,80,.10);
+}
+
+/* Textauswahl: aus. Beim Ziehen markiert HTML immer ganze Zeilen des umgebenden
+   Kastens, das lief quer ueber das Fenster. Eingabefelder bleiben ausgenommen.
+   In der App spielt das Programm dieselben Regeln zusaetzlich selbst ein. */
+html, body{ -webkit-user-select: none; user-select: none; }
+input, textarea, [contenteditable="true"]{ -webkit-user-select: text; user-select: text; }
+::selection{ background: rgba(255,255,255,.16); }
+:root[data-theme="light"] ::selection{ background: rgba(0,0,0,.12); }
