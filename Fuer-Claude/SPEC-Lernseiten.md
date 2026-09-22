@@ -1,13 +1,22 @@
 # Vertrag: Lernseite ↔ Lernkiste-App
 
-Version 1 · gilt für alle Seiten, die der Agent `lern-interaktiv` baut
+Version 2 · gilt für alle Seiten, die der Agent `lern-interaktiv` baut
 und für alle Seiten, die für die Lernkiste nachgerüstet werden.
 
 ## Grundregel
 
-Eine Lernseite bleibt **eine einzelne, self-contained HTML-Datei**, die per Doppelklick
-im Finder offline funktioniert. Die Lernkiste ist ein *zusätzliches* Zuhause, kein Ersatz.
-**Niemals** etwas einbauen, das ohne die App kaputtgeht.
+Eine Lernseite ist **Stoff, kein Programm**. Das Übungsverhalten — Fortschritt,
+Tagespensum, Enter-Steuerung, Abschlussbildschirm, GIFs — liefert der gemeinsame
+Motor unter `Seiten/_motor/` (Kapitel 8). Die Seite selbst enthält nur noch den
+Kopf, ein paar Merkkästen und die Aufgabenliste.
+
+Eine Lernseite funktioniert **weiterhin per Doppelklick im Finder, offline**: der
+Motor liegt im selben Ordnerbaum und wird relativ geladen. Die Lernkiste ist ein
+*zusätzliches* Zuhause, kein Ersatz. **Niemals** etwas einbauen, das ohne die App
+kaputtgeht.
+
+Aeltere Seiten, die ihr eigenes Geruest mitbringen, bleiben so, wie sie sind.
+Sie werden nicht umgebaut.
 
 ## 0 — Ablageort (Pflicht)
 
@@ -289,3 +298,68 @@ Regeln dazu:
 - `alert()`, `confirm()`, `prompt()` — blockieren das App-Fenster.
 - `window.open()`, Navigation zu anderen Seiten (`location.href = ...`).
 - Ein Download-Knopf für den Fortschritt (die App übernimmt das).
+
+## 8 — Der Motor `Lernseite.start()`
+
+Der Motor liegt in **zwei Dateien** und wird im Kopf der Seite eingebunden — immer
+relativ, zwei Ebenen hoch (Seite liegt in `Seiten/<Fach>/<Thema>/`):
+
+```html
+<link rel="stylesheet" href="../../_motor/lernkiste.css">
+<script src="../../_motor/lernkiste.js"></script>
+```
+
+Die beiden Dateien liegen **im Programm** (`Ressourcen/lernkiste.js`, `.css`) und
+werden bei jedem Start nach `Seiten/_motor/` gespiegelt. Wer am Motor etwas ändert,
+ändert die Fassung in `~/Lernkiste/Ressourcen/` und baut die App neu — eine Kopie
+im Datenordner wird beim nächsten Start überschrieben. Ordner mit führendem `_`
+listet die App nicht als Fach.
+
+Die Seite ruft am Ende genau einmal auf:
+
+```js
+Lernseite.start({
+  id: "chemie/saeure-base/ph-und-titration",   // wie im Meta-Block
+  version: 1,
+  untertitel: "...",           // ein Satz, steht über dem Fortschrittsblock
+  standard: { ziel: 20 },      // Tagespensum, wenn kein Plan etwas anderes sagt
+  tagesplan: { "2026-10-01": { ziel: 30, kategorien: ["Puffer rechnen"] } },
+  schemata: { titration: "<svg …>" },          // nur für die Übungsart svg
+  tabellen:  { pks: { kopfspalte: "Säure", spalten: ["…", "…"] } },
+  aufgaben: [ … ]
+});
+```
+
+Reihenfolge der Einstellungen — die **spätere gewinnt**: `standard` → `tagesplan`
+(Datum von heute) → Tagesplan der App → eigene Wahl im Filter. Alles über
+`nurGesetzte()`, damit ein Plan mit nur `ziel` nicht die Kategorien mitlöscht.
+
+### Die vier Übungsarten
+
+Jede Aufgabe braucht `id` (seitenweit eindeutig), `art` und `kategorie`. Optional
+überall: `hinweis` (kleiner Vorabtipp) und `merke` (steht nach dem Prüfen unter dem
+Ergebnis). Text darf HTML enthalten (`<sub>`, `&auml;` …) — der Motor escaped nur
+Attributwerte. **Kategorienamen aber ohne HTML**, sie sind zugleich Speicherschlüssel.
+
+| Art | Feld | Was passiert |
+|---|---|---|
+| `karte` | `frage`, `antwort` | Karteikarte. Knopf heißt „Aufdecken", danach entscheidet er selbst „saß / saß nicht". |
+| `rechnung` | `frage`, `felder[]`, `schritte[]` | Eingabefelder; nach dem Prüfen stehen Lösung und alle Zwischenschritte darunter. |
+| `svg` | `schema` oder `svg`, `ziel`, `teil` | Er klickt ins Bild. Jedes anklickbare Element trägt `data-teil="…"`. Kein Prüfen-Knopf — der Klick *ist* die Antwort. |
+| `tabelle` | `tabelle`, `kopf`, `zellen[]` | Eine Zeile einer Vergleichstabelle ausfüllen; Kopfzeile kommt aus `tabellen[…]`. |
+
+`felder` und `zellen` nehmen je `{ loesung, alternativen[], einheit, label,
+art: "text", toleranz }`. Ohne `art: "text"` wird als Zahl verglichen (Komma und
+`3,98e-4` erlaubt); ohne `toleranz` wird auf die Stellen der Lösung gerundet,
+mindestens auf zwei. Bei Text wird klein geschrieben und Umlaute werden aufgelöst.
+
+### Was der Motor von selbst tut
+
+Fortschrittsblock mit Trefferquote und Wackelkandidaten · Balken · Filter nach
+Kategorie und „Nur meine Wackelkandidaten" · „Fortschritt zurücksetzen" ·
+Wackelkandidaten kommen in derselben Runde doppelt dran · Enter nach dem Vertrag
+aus Kapitel 6 · Speichern nach Kapitel 2 und 3 · GIFs und Abschlussbildschirm nach
+Kapitel 5. Die Seite muss davon **nichts** selbst bauen.
+
+Alles, was die Seite sonst noch in `<body>` schreibt (Merkkästen `.box.merksatz`,
+`.falle`, `.esel`, `.klinik`), rutscht automatisch unter die Übung.
