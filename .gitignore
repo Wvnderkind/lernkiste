@@ -5,3 +5,7 @@
 zertifikat/
 *.p12
 *key.pem
+
+# Die Veroeffentlichungs-Werkzeuge sind privat — sie enthalten die
+# Ersetzungstabelle mit persoenlichen Begriffen.
+Werkzeuge/
