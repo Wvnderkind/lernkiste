@@ -23,13 +23,41 @@ Die geladene Datei im Downloads-Ordner doppelklicken, damit sie entpackt wird.
 
 Im entpackten Ordner liegt die Datei **`Installieren.command`**.
 
-**Wichtig:** nicht normal doppelklicken, sondern **Rechtsklick → Öffnen**, und im
-Fenster danach noch einmal auf **Öffnen**. Das ist einmalig nötig, weil die App von
-keinem bezahlten Apple-Entwicklerkonto signiert ist — macOS ist bei allem misstrauisch,
-was aus dem Internet kommt.
+macOS lässt die Datei beim Doppelklick nicht einfach starten, weil sie von keinem
+bezahlten Apple-Entwicklerkonto signiert ist. Es erscheint dann **„Installieren.command“
+nicht geöffnet**. Dort auf **Fertig** klicken, **nicht** auf „In den Papierkorb legen“.
+Seit macOS 15 (Sequoia) hilft auch **Rechtsklick → Öffnen** nicht mehr. So geht es:
 
-Es öffnet sich ein Terminal-Fenster, das ein paar Zeilen ausgibt und die App danach
-startet. Es legt ab:
+**Weg 1 – über das Terminal (am schnellsten):**
+
+1. Terminal öffnen: **⌘ + Leertaste**, `Terminal` eintippen, Enter.
+2. `bash` und **ein Leerzeichen** eintippen, aber noch nicht Enter drücken.
+3. Die Datei `Installieren.command` aus dem Finder ins Terminal-Fenster ziehen. Dann
+   steht dort ihr Pfad.
+4. Enter drücken.
+
+Liegt der Ordner unter seinem üblichen Namen in den Downloads, reicht auch:
+
+```bash
+bash ~/Downloads/lernkiste-main/Installieren.command
+```
+
+Mit `bash` davor wird die Datei direkt ausgeführt, ohne dass macOS sie blockiert.
+Mit `open` im Terminal oder per Doppelklick blockiert macOS sie weiterhin.
+
+**Weg 2 – über die Systemeinstellungen:**
+
+1. `Installieren.command` einmal doppelklicken und im Hinweis auf **Fertig** klicken.
+2. **Systemeinstellungen → Datenschutz & Sicherheit** öffnen und ganz nach unten
+   scrollen. Dort steht *„Installieren.command“ wurde blockiert*, daneben der Knopf
+   **Dennoch öffnen**.
+3. Auf den Knopf klicken und das Mac-Passwort eingeben. Danach die Datei noch einmal
+   doppelklicken und **Dennoch öffnen** wählen.
+
+Das ist nur einmal nötig. Das Skript nimmt der App selbst die Download-Sperre ab, sie
+startet danach ganz normal.
+
+Das Skript gibt im Terminal ein paar Zeilen aus und startet die App danach. Es legt ab:
 
 - `Lernkiste.app` → im Programme-Ordner
 - `~/Documents/Lernkiste/Seiten/` → hier wohnen die Lernseiten
@@ -100,9 +128,13 @@ bitten, danach wieder einfügen.
 
 ## Häufige Fragen
 
-**„Die App lässt sich nicht öffnen, sie stammt von einem nicht verifizierten Entwickler."**
-Rechtsklick auf die App → **Öffnen** → im Fenster noch einmal **Öffnen**. Nur beim
-ersten Mal nötig.
+**„…“ nicht geöffnet – Apple konnte nicht überprüfen, ob … frei von Schadsoftware ist.**
+Das ist die Download-Sperre von macOS. Auf **Fertig** klicken, nicht auf „In den
+Papierkorb legen“, und dann `Installieren.command` wie in [Schritt 2](#2-installieren)
+beschrieben über das Terminal (`bash` + Datei ins Fenster ziehen) oder über
+**Systemeinstellungen → Datenschutz & Sicherheit → Dennoch öffnen** starten. Meldet sich
+die App selbst so, `Installieren.command` einfach noch einmal ausführen. Es nimmt die
+Sperre ab.
 
 **„Die App zeigt keine Lernseiten."**
 Entweder liegt noch keine im Ordner, oder sie liegt an der falschen Stelle. Richtig ist
