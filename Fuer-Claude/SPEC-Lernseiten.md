@@ -343,10 +343,12 @@ Reihenfolge der Einstellungen — die **spätere gewinnt**: `standard` → `tage
 
 ### Die fünf Übungsarten
 
-Jede Aufgabe braucht `id` (seitenweit eindeutig), `art` und `kategorie`. Optional
+Jede Aufgabe braucht `id` (seitenweit eindeutig) und `art`, dazu in aller Regel
+eine `kategorie` (ohne sie entfällt nur der Kategoriefilter). Optional
 überall: `hinweis` (kleiner Vorabtipp) und `merke` (steht nach dem Prüfen unter dem
 Ergebnis). Text darf HTML enthalten (`<sub>`, `&auml;` …) — der Motor escaped nur
-Attributwerte. **Kategorienamen aber ohne HTML**, sie sind zugleich Speicherschlüssel.
+Attributwerte. Kategorienamen möglichst als schlichter Text: sie landen zugleich in
+der gespeicherten Filterwahl.
 
 | Art | Feld | Was passiert |
 |---|---|---|
@@ -396,3 +398,43 @@ Kapitel 5. Die Seite muss davon **nichts** selbst bauen.
 
 Alles, was die Seite sonst noch in `<body>` schreibt (Merkkästen `.box.merksatz`,
 `.falle`, `.esel`, `.klinik`), rutscht automatisch unter die Übung.
+
+### Selbstprüfung
+
+Beim Start prüft der Motor den Bauplan der Seite: Meta-Block passt zu `id` und
+`version`, jede Aufgabe hat eine eindeutige `id`, eine bekannte `art` und alle
+Pflichtfelder ihrer Art (bei `wahl` enthält `optionen` die `loesung`, bei `svg`
+gibt es das `data-teil`, bei `tabelle` passt die Zahl der `zellen` zu den
+`spalten`) — und das für **jede** Variante, die `bauen` erzeugen kann.
+
+Findet er etwas, steht oben auf der Seite ein roter Kasten „Diese Seite hat N
+Baufehler" mit Liste und Knopf „Liste kopieren" (fertig formuliert, um sie einer
+KI zurückzugeben). Die Übung läuft trotzdem, so gut es geht.
+
+Für Agenten und Tests: `Lernseite.pruefen()` liefert dieselbe Liste — **leeres
+Array = alles in Ordnung**. Jede neue Seite muss vor der Abgabe `[]` liefern.
+
+## 9 — Import und Schutz
+
+**Import.** Seiten müssen nicht mehr von Hand in den Ordner: „Ablage → Seite
+importieren …", eine HTML-Datei ins Fenster oder auf die Seitenleiste ziehen, aufs
+Dock-Symbol ziehen, oder „Ablage → Seite aus Zwischenablage einfügen" (Chat-Text
+und ```-Zäune um die Seite werden abgeschnitten). Die App legt die Seite nach
+ihrer `lernkiste-id` unter `Seiten/<Fach>/<Thema>/<slug>.html` ab; vorhandene
+Ordner werden unabhängig von Groß-/Kleinschreibung und Umlaut-Schreibweise
+wiedergefunden. Gibt es die `id` schon, fragt die App und verschiebt die alte
+Fassung nach `~/Documents/Lernkiste/_archiv/<Zeitstempel>-import/` — gelöscht wird
+nie. Seiten ohne Kennung: die App fragt nach Fach und Thema.
+
+**Bauanleitung für andere KIs.** „Ablage → Bauanleitung für eine KI kopieren"
+legt `Ressourcen/ki-vorlage.md` in die Zwischenablage: eine eigenständige,
+neutrale Kurzfassung dieses Vertrags mit Beispielseite. Wer den Vertrag ändert,
+passt die Vorlage mit an.
+
+**Schutz.** Alle Seiten teilen sich einen Ursprung und damit einen Speicher —
+eine fremde Seite könnte also fremden Fortschritt lesen. Deshalb:
+- Der Server schickt zu jeder HTML-Seite eine Content-Security-Policy: nichts aus
+  dem Netz laden, nichts dorthin senden, keine Formulare (`Server.schutz`).
+- Das Fenster lässt nur Navigation innerhalb der Lernkiste zu. Links ins Netz
+  öffnen erst nach Rückfrage im normalen Browser; alles, was eine Seite ungefragt
+  ansteuert, wird verworfen.

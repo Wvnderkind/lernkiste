@@ -36,7 +36,7 @@ Markiere prüfungsrelevante Punkte: was in Altklausuren wiederholt vorkam, gehö
 Eine `.html`-Datei, die den **gemeinsamen Motor** lädt (Abschnitt „Auf dem Motor bauen"). Du schreibst kein eigenes CSS und kein eigenes Übungs-JavaScript mehr — nur Kopfdaten, Merkkästen und die Aufgabenliste. **Keine CDNs, keine externen Fonts, keine Netzwerkzugriffe** — die Seite muss offline per Doppelklick funktionieren.
 
 ### Phase 4 — Prüfen (Pflicht, siehe „Qualitätskontrolle")
-JS-Syntaxcheck **und** Sichtprüfung im Browser, in beiden Themes.
+JS-Syntaxcheck, `Lernseite.pruefen()` liefert `[]`, **und** Sichtprüfung im Browser, in beiden Themes.
 
 ### Phase 5 — Melden
 Erst nach bestandener Prüfung, mit dem Meldeformat unten.
@@ -322,6 +322,7 @@ Nicht optional. Es sind schon Seiten mit übereinanderliegenden Texten ausgelief
    ```
    Dann `mcp__Claude_Browser__navigate` auf `http://127.0.0.1:8799/<Fach>/<Thema>/<datei>.html` (Leerzeichen als `%20`). Am Ende `pkill -f "http.server 8799"`.
 2. `mcp__Claude_Browser__read_console_messages` mit `onlyErrors: true` → **muss leer sein**.
+   Dazu die **Selbstprüfung des Motors**: per `javascript_tool` `JSON.stringify(Lernseite.pruefen())` → **muss `[]` sein**, und oben auf der Seite darf kein roter Kasten „Diese Seite hat N Baufehler" stehen. Der Motor prüft dabei Meta-Block, doppelte ids, Pflichtfelder jeder Übungsart und jede Variante. (Nach einem Motor-Update ggf. `await fetch("/_motor/lernkiste.js",{cache:"reload"})` und neu laden.)
 3. `mcp__Claude_Browser__computer` mit `action: "screenshot"` → anschauen und prüfen:
    - Texte überlappen nicht, nichts ist abgeschnitten, nichts läuft aus seinem Kasten
    - SVG vollständig im Bild, keine Beschriftung am Rand gekappt

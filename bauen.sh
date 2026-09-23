@@ -13,7 +13,7 @@ mkdir -p "$ZIEL/MacOS" "$ZIEL/Resources"
 echo "→ Swift übersetzen"
 swiftc -O -o "$ZIEL/MacOS/Lernkiste" \
   Quelle/Modell.swift Quelle/Server.swift Quelle/Fortschritt.swift \
-  Quelle/Startseite.swift Quelle/Fenster.swift Quelle/main.swift
+  Quelle/Startseite.swift Quelle/Fenster.swift Quelle/Import.swift Quelle/main.swift
 
 echo "→ Ressourcen kopieren"
 cp Ressourcen/tokens.css "$ZIEL/Resources/"
@@ -21,6 +21,8 @@ cp Ressourcen/tokens.css "$ZIEL/Resources/"
 # beim Start nach Seiten/_motor/ gespiegelt — so hat jede Lernseite denselben
 # Stand, egal wer die App installiert.
 cp Ressourcen/lernkiste.js Ressourcen/lernkiste.css "$ZIEL/Resources/"
+# Bauanleitung, die man einer beliebigen KI in den Chat gibt (Menue Ablage).
+cp Ressourcen/ki-vorlage.md "$ZIEL/Resources/"
 [ -f Ressourcen/Lernkiste.icns ] && cp Ressourcen/Lernkiste.icns "$ZIEL/Resources/"
 
 echo "→ Info.plist schreiben"
@@ -39,6 +41,13 @@ cat > "$ZIEL/Info.plist" <<'PLIST'
   <key>CFBundleIconFile</key><string>Lernkiste</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>CFBundleDocumentTypes</key>
+  <array><dict>
+    <key>CFBundleTypeName</key><string>Lernseite</string>
+    <key>CFBundleTypeRole</key><string>Viewer</string>
+    <key>LSHandlerRank</key><string>Alternate</string>
+    <key>LSItemContentTypes</key><array><string>public.html</string></array>
+  </dict></array>
   <key>NSHumanReadableCopyright</key><string>Lernkiste — interaktive Lernseiten</string>
 </dict>
 </plist>

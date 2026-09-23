@@ -46,7 +46,6 @@ enum Orte {
     /// Aenderungsdatum stabil und ein laufender Browser-Cache wird nicht unnoetig
     /// entwertet. Das Programm ist die Quelle — eine Kopie hier wird ueberschrieben.
     private static func motorSpiegeln() {
-        let fm = FileManager.default
         for name in motorDateien {
             guard let quelle = Bundle.main.url(forResource: name, withExtension: nil),
                   let neu = try? Data(contentsOf: quelle) else { continue }
@@ -179,7 +178,7 @@ enum Bibliothek {
             ?? String(decoding: daten, as: UTF8.self)
     }
 
-    private static func meta(_ html: String, _ name: String) -> String? {
+    static func meta(_ html: String, _ name: String) -> String? {
         let muster = "<meta\\s+name=[\"']\(name)[\"']\\s+content=[\"']([^\"']*)[\"']"
         return ersteGruppe(html, muster)
     }

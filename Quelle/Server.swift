@@ -188,11 +188,29 @@ final class Server {
                     laenge: koerper.count, cachen: false) + koerper
     }
 
+    /// Lernseiten duerfen nichts aus dem Netz laden und nichts dorthin schicken.
+    /// Alles, was eine Seite braucht, steckt in ihr selbst oder kommt von
+    /// diesem Server — so kann auch eine fremde Seite keine Daten hinaustragen.
+    static let schutz = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "media-src 'self' data: blob:",
+        "font-src 'self' data:",
+        "connect-src 'self'",
+        "frame-src 'self' data: blob:",
+        "object-src 'none'",
+        "form-action 'none'",
+        "base-uri 'self'",
+    ].joined(separator: "; ")
+
     private func kopf(_ code: Int, _ text: String, typ: String, laenge: Int, cachen: Bool) -> Data {
         var k = "HTTP/1.1 \(code) \(text)\r\n"
         k += "Content-Type: \(typ)\r\n"
         k += "Content-Length: \(laenge)\r\n"
         k += cachen ? "Cache-Control: max-age=3600\r\n" : "Cache-Control: no-store\r\n"
+        if typ.hasPrefix("text/html") { k += "Content-Security-Policy: \(Self.schutz)\r\n" }
         k += "Connection: close\r\n\r\n"
         return Data(k.utf8)
     }

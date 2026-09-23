@@ -56,6 +56,31 @@ Bau mir eine interaktive Lernseite zum Citratzyklus.
 Die fertige Seite landet automatisch in der App. Dort einmal **Ablage → Seiten neu
 einlesen** (⌘R) drücken, dann steht sie auf der Startseite.
 
+## 4. Seiten von einer anderen KI (ChatGPT, Gemini …)
+
+Claude Code ist nicht Pflicht. In der App **Ablage → Bauanleitung für eine KI kopieren**
+wählen, die Anleitung in den Chat der KI einfügen und dazuschreiben, welches Thema
+die Seite haben soll. Die Antwort der KI komplett kopieren und in der App
+**Ablage → Seite aus Zwischenablage einfügen** (⇧⌘V) wählen — die App sucht die
+HTML-Datei aus dem Text heraus und sortiert sie selbst in Fach und Thema ein.
+
+Andere Wege, eine fertige Seite hineinzubekommen:
+
+- **Ablage → Seite importieren …** (⌘O)
+- die `.html`-Datei in die linke Leiste der App ziehen
+- die Datei auf das Lernkiste-Symbol im Dock ziehen
+
+Gibt es schon eine Seite mit derselben Kennung, fragt die App nach; die alte Fassung
+wird nicht gelöscht, sondern unter `~/Documents/Lernkiste/_archiv/` aufgehoben.
+
+**Roter Kasten oben auf einer Seite?** Dann hat die Seite Baufehler. Auf
+**Liste kopieren** drücken, die Liste der KI geben und um eine korrigierte Fassung
+bitten, danach wieder einfügen.
+
+> Lernseiten dürfen nichts aus dem Internet nachladen und keine fremden Webseiten
+> öffnen — die App blockiert das. Links nach draußen öffnen sich erst nach Rückfrage
+> im normalen Browser.
+
 ---
 
 ## Was im Ordner liegt

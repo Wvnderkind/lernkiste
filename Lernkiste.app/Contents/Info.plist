@@ -12,6 +12,13 @@
   <key>CFBundleIconFile</key><string>Lernkiste</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>CFBundleDocumentTypes</key>
+  <array><dict>
+    <key>CFBundleTypeName</key><string>Lernseite</string>
+    <key>CFBundleTypeRole</key><string>Viewer</string>
+    <key>LSHandlerRank</key><string>Alternate</string>
+    <key>LSItemContentTypes</key><array><string>public.html</string></array>
+  </dict></array>
   <key>NSHumanReadableCopyright</key><string>Lernkiste — interaktive Lernseiten</string>
 </dict>
 </plist>

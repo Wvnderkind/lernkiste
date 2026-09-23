@@ -43,6 +43,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.open(Orte.seiten)
     }
 
+    @objc func seiteImportieren() { Import.dateienWaehlen(fenster) }
+
+    @objc func ausZwischenablage() { Import.ausZwischenablage(fenster) }
+
+    @objc func bauanleitungKopieren() { Import.bauanleitungKopieren() }
+
+    /// HTML-Datei aufs Dock-Symbol gezogen oder mit „Öffnen mit“ gewaehlt.
+    func application(_ app: NSApplication, open urls: [URL]) {
+        Import.dateien(urls, fenster)
+    }
+
     private func menueBauen() {
         let haupt = NSMenu()
 
@@ -71,6 +82,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ordner.target = self
         dateiMenu.addItem(ordner)
         dateiMenu.addItem(.separator())
+        for (titel, aktion, taste) in [
+            ("Seite importieren …", #selector(seiteImportieren), "o"),
+            ("Seite aus Zwischenablage einfügen", #selector(ausZwischenablage), "V"),
+            ("Bauanleitung für eine KI kopieren", #selector(bauanleitungKopieren), ""),
+        ] as [(String, Selector, String)] {
+            let eintrag = NSMenuItem(title: titel, action: aktion, keyEquivalent: taste)
+            eintrag.target = self
+            dateiMenu.addItem(eintrag)
+        }
+        dateiMenu.addItem(.separator())
         dateiMenu.addItem(withTitle: "Fenster schließen",
                           action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         dateiItem.submenu = dateiMenu
@@ -98,8 +119,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let fensterMenu = NSMenu(title: "Fenster")
         fensterMenu.addItem(withTitle: "Im Dock ablegen",
                             action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
-        fensterMenu.addItem(withTitle: "Vollbild",
+        let vollbild = fensterMenu.addItem(withTitle: "Vollbild",
                             action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
+        vollbild.keyEquivalentModifierMask = [.control, .command]   // cmd-F ist die Suche
         fensterItem.submenu = fensterMenu
         haupt.addItem(fensterItem)
         NSApp.windowsMenu = fensterMenu

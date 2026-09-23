@@ -222,6 +222,9 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         liste.backgroundColor = Farben.seitenleiste
         liste.dataSource = self
         liste.delegate = self
+        // Lernseiten lassen sich direkt in die Leiste ziehen.
+        liste.registerForDraggedTypes([.fileURL])
+        liste.setDraggingSourceOperationMask(.copy, forLocal: false)
         liste.doubleAction = #selector(zeileGeklickt)
         liste.target = self
         liste.action = #selector(zeileGeklickt)
@@ -752,6 +755,47 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         }
     }
 
+    /// Wohin eine Seite springen darf. Lernseiten bleiben in der Lernkiste:
+    /// Links ins Netz gehen erst nach Rueckfrage und dann im normalen Browser auf,
+    /// alles, was eine Seite ungefragt ansteuern will, wird verworfen.
+    func webView(_ webView: WKWebView, decidePolicyFor aktion: WKNavigationAction,
+                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        guard let url = aktion.request.url else { decisionHandler(.cancel); return }
+        let schema = url.scheme?.lowercased() ?? ""
+
+        if ["about", "data", "blob"].contains(schema) { decisionHandler(.allow); return }
+        if schema == "http", url.host == "127.0.0.1" || url.host == "localhost",
+           url.port == Int(Server.port) {
+            decisionHandler(.allow); return
+        }
+        decisionHandler(.cancel)
+
+        // Eine HTML-Datei ins Fenster gezogen: aufnehmen statt nur anzeigen.
+        if url.isFileURL {
+            if ["html", "htm"].contains(url.pathExtension.lowercased()) {
+                DispatchQueue.main.async { [weak self] in Import.dateien([url], self) }
+            }
+            return
+        }
+        guard aktion.navigationType == .linkActivated,
+              ["http", "https", "mailto"].contains(schema) else { return }
+        DispatchQueue.main.async { [weak self] in self?.externFragen(url) }
+    }
+
+    private func externFragen(_ url: URL) {
+        let frage = NSAlert()
+        frage.messageText = "Seite im Browser öffnen?"
+        frage.informativeText = "Der Link führt aus der Lernkiste hinaus zu:\n\n"
+            + (url.scheme == "mailto" ? url.absoluteString : (url.host ?? url.absoluteString))
+        frage.addButton(withTitle: "Im Browser öffnen")
+        frage.addButton(withTitle: "Abbrechen")
+        let antwort: (NSApplication.ModalResponse) -> Void = { r in
+            if r == .alertFirstButtonReturn { NSWorkspace.shared.open(url) }
+        }
+        if let window { frage.beginSheetModal(for: window, completionHandler: antwort) }
+        else { antwort(frage.runModal()) }
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         themaAnwenden()
         trennerZeigen(false)   // jede Seite faengt oben an
@@ -908,6 +952,29 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
             bild.widthAnchor.constraint(equalToConstant: 13),
         ])
         return zelle
+    }
+
+    // MARK: Hineinziehen in die Leiste
+
+    private func gezogeneSeiten(_ info: NSDraggingInfo) -> [URL] {
+        let urls = info.draggingPasteboard.readObjects(
+            forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+        return urls.filter { ["html", "htm"].contains($0.pathExtension.lowercased()) }
+    }
+
+    func outlineView(_ o: NSOutlineView, validateDrop info: NSDraggingInfo,
+                     proposedItem item: Any?, proposedChildIndex index: Int) -> NSDragOperation {
+        guard !gezogeneSeiten(info).isEmpty else { return [] }
+        o.setDropItem(nil, dropChildIndex: NSOutlineViewDropOnItemIndex)   // ganze Leiste leuchtet
+        return .copy
+    }
+
+    func outlineView(_ o: NSOutlineView, acceptDrop info: NSDraggingInfo,
+                     item: Any?, childIndex index: Int) -> Bool {
+        let urls = gezogeneSeiten(info)
+        guard !urls.isEmpty else { return false }
+        DispatchQueue.main.async { [weak self] in Import.dateien(urls, self) }
+        return true
     }
 
     // MARK: Von der Startseite aufgerufen

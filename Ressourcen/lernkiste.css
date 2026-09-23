@@ -201,6 +201,11 @@ button.no-btn.chosen{ background:var(--no); color:var(--bg); }
 .esel    { border-left-color:var(--green); }
 .hotspot { border-left-color:var(--violet); }
 .box-title{ font-weight:700; margin-bottom:.35rem; }
+/* Selbstpruefung des Motors: meldet Baufehler der Seite ganz oben. Die Liste
+   darf markiert werden — wer sie abtippen oder kopieren will, soll das koennen. */
+.lk-baufehler{ border-left-color:var(--no); user-select:text; -webkit-user-select:text; }
+.lk-baufehler ul{ margin:.5rem 0 .6rem 1.1rem; padding:0; font-size:.9rem; }
+.lk-baufehler li{ margin:.15rem 0; }
 
 /* --- Schlussbildschirm --- */
 .fertigscreen{

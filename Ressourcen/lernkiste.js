@@ -245,6 +245,158 @@ function itemsEinsammeln(cfg) {
 }
 
 /* ------------------------------------------------------------
+   Selbstpruefung
+   ------------------------------------------------------------ */
+/* Findet Baufehler, bevor sie beim Ueben auffallen: eine Loesung, die in
+   keiner Auswahl steht, eine doppelte id, die zwei Aufgaben denselben
+   Fortschritt teilen laesst, ein Meta-Block, der nicht zur Konfiguration
+   passt. Wer die Seite gebaut hat — Mensch oder KI — bekommt die Liste im
+   Klartext und weiss genau, was zu reparieren ist. */
+function metaWert(name) {
+  var m = document.querySelector('meta[name="' + name + '"]');
+  return m ? m.getAttribute("content") : null;
+}
+
+function leer(x) { return x === undefined || x === null || String(x).trim() === ""; }
+
+function aufgabePruefen(it, wo, melde) {
+  if (it.art === "karte") {
+    if (leer(it.frage))   melde(wo, "frage fehlt.");
+    if (leer(it.antwort)) melde(wo, "antwort fehlt.");
+  } else if (it.art === "rechnung") {
+    if (leer(it.frage)) melde(wo, "frage fehlt.");
+    if (!Array.isArray(it.felder) || !it.felder.length) {
+      melde(wo, "felder fehlt (mindestens ein Eingabefeld).");
+    } else {
+      it.felder.forEach(function (f, n) {
+        if (leer(f.loesung)) melde(wo, "Feld " + (n + 1) + ": loesung fehlt.");
+      });
+    }
+  } else if (it.art === "wahl") {
+    if (leer(it.frage)) melde(wo, "frage fehlt.");
+    if (leer(it.loesung)) {
+      melde(wo, "loesung fehlt.");
+    } else if (Array.isArray(it.optionen)) {
+      if (it.optionen.length < 2) melde(wo, "optionen braucht mindestens zwei Antworten.");
+      if (it.optionen.map(String).indexOf(String(it.loesung)) < 0)
+        melde(wo, 'loesung "' + it.loesung + '" steht nicht unter den optionen (Schreibweise muss exakt gleich sein).');
+    } else if (!it.ablenkerAus) {
+      melde(wo, "optionen fehlt (oder ablenkerAus angeben).");
+    }
+  } else if (it.art === "svg") {
+    var svg = (K.schemata || {})[it.schema] || it.svg || "";
+    if (!svg) melde(wo, it.schema ? 'Schema "' + it.schema + '" steht nicht in schemata.'
+                                  : "schema oder svg fehlt.");
+    if (leer(it.teil)) {
+      melde(wo, "teil fehlt (welches data-teil ist die richtige Stelle?).");
+    } else if (svg && svg.indexOf('data-teil="' + it.teil + '"') < 0
+                   && svg.indexOf("data-teil='" + it.teil + "'") < 0) {
+      melde(wo, 'im Schema gibt es kein Element mit data-teil="' + it.teil + '".');
+    }
+    if (leer(it.ziel)) melde(wo, "ziel fehlt (was soll angeklickt werden?).");
+  } else if (it.art === "tabelle") {
+    var def = (K.tabellen || {})[it.tabelle];
+    if (!def) melde(wo, 'Tabelle "' + it.tabelle + '" steht nicht in tabellen.');
+    if (!Array.isArray(it.zellen) || !it.zellen.length) {
+      melde(wo, "zellen fehlt.");
+    } else {
+      if (def && def.spalten && def.spalten.length !== it.zellen.length)
+        melde(wo, it.zellen.length + " zellen, aber die Tabelle hat " + def.spalten.length + " spalten.");
+      it.zellen.forEach(function (z, n) {
+        if (leer(z.loesung)) melde(wo, "Zelle " + (n + 1) + ": loesung fehlt.");
+      });
+    }
+  }
+}
+
+function bauplanPruefen() {
+  var fehler = [];
+  function melde(wo, text) {
+    var zeile = (wo ? wo + ": " : "") + text;
+    if (fehler.indexOf(zeile) < 0) fehler.push(zeile);
+  }
+
+  var metaId = metaWert("lernkiste-id"), metaVer = metaWert("lernkiste-version");
+  if (!metaId) melde("Kopf", '<meta name="lernkiste-id"> fehlt — ohne sie ordnet die App den Fortschritt nicht zu.');
+  else if (metaId !== K.id)
+    melde("Kopf", 'lernkiste-id im Kopf ("' + metaId + '") und id in Lernseite.start ("' + K.id + '") sind verschieden.');
+  if (metaVer && Number(metaVer) !== Number(K.version))
+    melde("Kopf", "lernkiste-version im Kopf (" + metaVer + ") und version in Lernseite.start ("
+                  + K.version + ") sind verschieden.");
+  if (!alleItems.length) melde("", "Die Seite hat keine einzige Aufgabe.");
+
+  var vs = varianten();
+  vs.forEach(function (v, n) {
+    if (!v.id) melde("Variante " + (n + 1), "id fehlt.");
+    if (v.bauen && typeof v.bauen !== "function") melde("Variante " + (v.id || n + 1), "bauen muss eine Funktion sein.");
+  });
+  umfaenge().forEach(function (u, n) {
+    if (!u.id) melde("Umfang " + (n + 1), "id fehlt.");
+    if (typeof u.gilt !== "function") melde("Umfang " + (u.id || n + 1), "gilt(aufgabe) muss eine Funktion sein.");
+  });
+
+  var gesehen = {};
+  alleItems.forEach(function (roh) {
+    var wo = "Aufgabe " + roh.id;
+    if (gesehen[roh.id]) melde(wo, "id kommt doppelt vor — beide Aufgaben teilten sich den Fortschritt.");
+    gesehen[roh.id] = true;
+    if (!ARTEN[roh.art]) {
+      melde(wo, 'unbekannte art "' + roh.art + '" (erlaubt: ' + Object.keys(ARTEN).join(", ") + ").");
+      return;
+    }
+    if (roh.kategorie !== undefined && typeof roh.kategorie !== "string") melde(wo, "kategorie muss ein Text sein.");
+
+    /* Varianten fuellen manche Felder erst beim Drankommen — also jede
+       Fassung pruefen, die tatsaechlich auf den Bildschirm kommen kann. */
+    if (!vs.length) { aufgabePruefen(roh, wo, melde); return; }
+    vs.forEach(function (v) {
+      if (typeof v.bauen !== "function") { aufgabePruefen(roh, wo, melde); return; }
+      var zusatz;
+      try { zusatz = v.bauen(roh); }
+      catch (e) { melde(wo, 'Variante "' + v.id + '" bricht mit einem Fehler ab: ' + e.message); return; }
+      aufgabePruefen(zusatz ? Object.assign({}, roh, zusatz) : roh,
+                     wo + (vs.length > 1 ? ' (Variante "' + v.id + '")' : ""), melde);
+    });
+  });
+  return fehler;
+}
+
+function textKopieren(text) {
+  try { if (navigator.clipboard) { navigator.clipboard.writeText(text); return; } } catch (e) {}
+  var feld = document.createElement("textarea");
+  feld.value = text;
+  feld.style.position = "fixed"; feld.style.opacity = "0";
+  document.body.appendChild(feld);
+  feld.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  document.body.removeChild(feld);
+}
+
+function baufehlerZeigen(fehler) {
+  if (!fehler.length) return;
+  fehler.forEach(function (f) { try { console.error("Lernseite-Baufehler: " + f); } catch (e) {} });
+  var zeigen = fehler.slice(0, 12);
+  var kasten = document.createElement("div");
+  kasten.className = "box falle lk-baufehler";
+  kasten.id = "lkBaufehler";
+  kasten.innerHTML =
+      "<b>Diese Seite hat " + fehler.length + " Baufehler.</b> Die Übung läuft trotzdem, "
+    + "einzelne Aufgaben können aber falsch bewertet werden. Gib die Liste der KI, "
+    + "die die Seite gebaut hat — dann weiß sie genau, was zu reparieren ist."
+    + "<ul>" + zeigen.map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("")
+    + (fehler.length > zeigen.length ? "<li>… und " + (fehler.length - zeigen.length) + " weitere</li>" : "")
+    + "</ul>";
+  var knopfKopieren = knopf("Liste kopieren", false, function () {
+    textKopieren("Die Lernkiste meldet in der Seite \"" + K.id + "\" diese Baufehler. "
+               + "Bitte behebe sie und gib die ganze Seite neu aus:\n- " + fehler.join("\n- "));
+    knopfKopieren.innerHTML = "Kopiert ✓";
+  });
+  kasten.appendChild(knopfKopieren);
+  var huelle = document.querySelector(".container") || document.body;
+  huelle.insertBefore(kasten, huelle.firstChild);
+}
+
+/* ------------------------------------------------------------
    Aufbau
    ------------------------------------------------------------ */
 function start(cfg) {
@@ -280,6 +432,8 @@ function start(cfg) {
          : (plan.umfang || (us.length ? us[0].id : null));
 
   geruestBauen();
+  /* Die Pruefung darf nie selbst die Seite umwerfen. */
+  try { baufehlerZeigen(bauplanPruefen()); } catch (e) {}
 
   var s = Store.load();
   s.gesamt = alleItems.length;
@@ -874,6 +1028,10 @@ ARTEN.wahl = {
 };
 
 /* ------------------------------------------------------------ */
-global.Lernseite = { start: start, heuteStr: heuteStr, shuffle: shuffle };
+global.Lernseite = {
+  start: start, heuteStr: heuteStr, shuffle: shuffle,
+  /* Fuer Agenten und Tests: liefert die Baufehler als Liste, leer = alles gut. */
+  pruefen: function () { return K ? bauplanPruefen() : ["Lernseite.start wurde nie aufgerufen."]; }
+};
 
 })(window);
