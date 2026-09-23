@@ -322,19 +322,26 @@ Lernseite.start({
   id: "chemie/saeure-base/ph-und-titration",   // wie im Meta-Block
   version: 1,
   untertitel: "...",           // ein Satz, steht über dem Fortschrittsblock
+  fussnote: "<p><b>Quellen:</b> …</p>",   // steht ganz unten, HTML erlaubt
   standard: { ziel: 20 },      // Tagespensum, wenn kein Plan etwas anderes sagt
   tagesplan: { "2026-10-01": { ziel: 30, kategorien: ["Puffer rechnen"] } },
   schemata: { titration: "<svg …>" },          // nur für die Übungsart svg
   tabellen:  { pks: { kopfspalte: "Säure", spalten: ["…", "…"] } },
-  aufgaben: [ … ]
+  varianten: [ … ],            // optional, siehe unten
+  umfaenge:  [ … ],            // optional, siehe unten
+  aufgaben: [ … ]              // Liste oder Funktion, die eine Liste liefert
 });
 ```
+
+Die Seite baut **kein** eigenes Gerüst (kein `.container`, keine Überschrift): den
+Titel zeigt die App aus dem Meta-Block, Untertitel und Fußnote kommen aus der
+Konfiguration. In `<body>` stehen nur Merkkästen.
 
 Reihenfolge der Einstellungen — die **spätere gewinnt**: `standard` → `tagesplan`
 (Datum von heute) → Tagesplan der App → eigene Wahl im Filter. Alles über
 `nurGesetzte()`, damit ein Plan mit nur `ziel` nicht die Kategorien mitlöscht.
 
-### Die vier Übungsarten
+### Die fünf Übungsarten
 
 Jede Aufgabe braucht `id` (seitenweit eindeutig), `art` und `kategorie`. Optional
 überall: `hinweis` (kleiner Vorabtipp) und `merke` (steht nach dem Prüfen unter dem
@@ -347,11 +354,37 @@ Attributwerte. **Kategorienamen aber ohne HTML**, sie sind zugleich Speicherschl
 | `rechnung` | `frage`, `felder[]`, `schritte[]` | Eingabefelder; nach dem Prüfen stehen Lösung und alle Zwischenschritte darunter. |
 | `svg` | `schema` oder `svg`, `ziel`, `teil` | Er klickt ins Bild. Jedes anklickbare Element trägt `data-teil="…"`. Kein Prüfen-Knopf — der Klick *ist* die Antwort. |
 | `tabelle` | `tabelle`, `kopf`, `zellen[]` | Eine Zeile einer Vergleichstabelle ausfüllen; Kopfzeile kommt aus `tabellen[…]`. |
+| `wahl` | `frage`, `optionen[]`, `loesung` | Antwort anklicken, dann Prüfen. Statt `optionen` geht `ablenkerAus: "feld"` — dann nimmt der Motor die Werte dieses Feldes aus anderen Aufgaben der Seite als Ablenker (`anzahl`, Standard 4). |
 
 `felder` und `zellen` nehmen je `{ loesung, alternativen[], einheit, label,
 art: "text", toleranz }`. Ohne `art: "text"` wird als Zahl verglichen (Komma und
 `3,98e-4` erlaubt); ohne `toleranz` wird auf die Stellen der Lösung gerundet,
-mindestens auf zwei. Bei Text wird klein geschrieben und Umlaute werden aufgelöst.
+mindestens auf zwei. Zahlen dürfen mit echtem Minus (−, auch – und —) oder
+führendem Plus getippt werden: „−1" und „+2" zählen wie -1 und 2. Nicht-Zahlen als
+`loesung` werden automatisch als Text verglichen. Bei Text wird klein geschrieben,
+Umlaute werden aufgelöst, und zusätzlich gilt eine Antwort als richtig, wenn sie
+ohne Bindestriche, Klammern und Leerzeichen gleich ist („Propan-2-ol" = „propan 2 ol").
+
+### Varianten und Umfänge
+
+**`varianten`** sind Abfragerichtungen über denselben Stoff (etwa Symbol → Name
+und Name → Symbol). Jede ist `{ id, label, mix, bauen(it) }`: `bauen` gibt ein
+Objekt zurück, dessen Felder die Aufgabe für diese Richtung überschreiben (oder
+`null` = Aufgabe bleibt, wie sie ist). Die `id` der Aufgabe bleibt dabei immer
+gleich — der Fortschritt zählt pro Stoff, nicht pro Richtung. Ab zwei Varianten
+zeigt der Motor die Knöpfe plus „🔀 Gemischt"; `mix: false` hält eine Richtung
+(etwa reines Karteikarten-Lernen) aus „Gemischt" heraus. Die Wahl merkt sich der
+Motor unter `lern:<id>@v1-einstellungen`.
+
+Trick: **eine einzige** Variante erzeugt keinen Knopf, ihr `bauen` läuft aber bei
+jeder Aufgabe neu. So lassen sich Aufgaben bei jedem Drankommen frisch würfeln
+(z. B. zufällige Salze in `chemie/redox/oxidationszahlen`), ohne dass sich ihre
+`id` ändert.
+
+**`umfaenge`** schränken ein, welcher Ausschnitt drankommt: `{ id, label,
+gilt(it) }` — `gilt` sagt, ob eine Aufgabe zum Umfang gehört (z. B. „Elemente
+1–18"). Knöpfe erscheinen ab zwei Umfängen. Ebenso erscheint der Kategoriefilter
+nur, wenn es mehr als eine Kategorie gibt.
 
 ### Was der Motor von selbst tut
 

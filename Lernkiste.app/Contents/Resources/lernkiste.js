@@ -54,8 +54,21 @@ function esc(s) {
     .replace(/"/g, "&quot;");
 }
 /* "1,5e-3" und "1.5E-3" sollen beide gehen — er tippt mit deutschem Komma. */
+/* Fuer Textantworten entscheiden Bindestriche, Klammern und Leerzeichen nicht
+   ueber richtig oder falsch: "Propan-2-ol", "propan 2 ol" und "propan2ol"
+   meinen dasselbe Molekuel. */
+function knapp(text) {
+  return normText(text).replace(/[^a-z0-9]/g, "");
+}
+
 function alsZahl(text) {
-  var s = String(text == null ? "" : text).trim().replace(/\s/g, "").replace(",", ".");
+  /* Das echte Minuszeichen (U+2212) steht in jeder Chemie-Seite im Text; wer es
+     abschreibt, hat sonst trotz richtiger Zahl eine falsche Antwort. Ein
+     fuehrendes Plus ("+2") meint dasselbe wie 2. */
+  var s = String(text == null ? "" : text).trim().replace(/\s/g, "")
+            .replace(/[\u2212\u2013\u2014]/g, "-")
+            .replace(/^\+/, "")
+            .replace(",", ".");
   if (s === "") return NaN;
   return Number(s);
 }
@@ -95,6 +108,8 @@ var wahl = null;         // "sass" | "sassNicht" der Selbsteinschaetzung
 var warWackler = false;  // stand das Item vorher auf "sassNicht"?
 var nurWackler = false;
 var kategorie = null;    // null = alle
+var variante = null;     // gewaehlte Abfragerichtung, "mix" = gemischt
+var umfang = null;       // gewaehlter Umfang (zweite Filterebene)
 var weiterUeben = false; // Tagespensum geschafft, er uebt trotzdem weiter
 
 /* ------------------------------------------------------------
@@ -175,6 +190,46 @@ var DURCHHAENGER = ["Konzentrier dich mal.", "Nochmal in Ruhe angucken.", "Der w
 function ausWahl(liste) { return liste[Math.floor(Math.random() * liste.length)]; }
 
 /* ------------------------------------------------------------
+   Abfragerichtungen und Umfaenge
+
+   Manche Seiten fragen denselben Stoff aus mehreren Richtungen ab —
+   beim Periodensystem etwa "Element -> Ordnungszahl" und umgekehrt.
+   Die Aufgabe bleibt dieselbe (und damit auch der Fortschritt), nur die
+   Frage aendert sich. Der Umfang ist davon unabhaengig: er entscheidet,
+   welcher Ausschnitt ueberhaupt drankommt.
+   ------------------------------------------------------------ */
+function varianten() { return K && K.varianten ? K.varianten : []; }
+function umfaenge()  { return K && K.umfaenge  ? K.umfaenge  : []; }
+
+function findeVariante(id) {
+  var v = varianten(), i;
+  for (i = 0; i < v.length; i++) { if (v[i].id === id) return v[i]; }
+  return null;
+}
+
+/* Wendet die gewaehlte Richtung auf eine Aufgabe an. Bei "mix" wuerfelt
+   der Motor pro Aufgabe neu — die id bleibt in jedem Fall unangetastet,
+   sonst zaehlte derselbe Stoff mehrfach im Fortschritt. */
+function variantePraegen(it) {
+  var v = varianten();
+  if (!v.length) return it;
+  /* Bei "Gemischt" kommen nur Richtungen dran, die sich mischen lassen. Eine
+     Richtung mit mix:false (etwa reines Lernen mit Selbsteinschaetzung) bleibt
+     aussen vor — sonst landet mitten in der Abfrage eine Karteikarte. */
+  var mischbar = v.filter(function (x) { return x.mix !== false; });
+  if (!mischbar.length) mischbar = v;
+  var gewaehlt = variante === "mix" || !variante ? ausWahl(mischbar)
+                                                 : (findeVariante(variante) || v[0]);
+  var zusatz;
+  try { zusatz = gewaehlt.bauen ? gewaehlt.bauen(it) : null; } catch (e) { zusatz = null; }
+  if (!zusatz) return it;
+  var kopie = Object.assign({}, it, zusatz);
+  kopie.id = it.id;
+  kopie.variante = gewaehlt.id;
+  return kopie;
+}
+
+/* ------------------------------------------------------------
    Items einsammeln
    ------------------------------------------------------------ */
 function itemsEinsammeln(cfg) {
@@ -214,6 +269,15 @@ function start(cfg) {
   var eig = Eigene.load();
   kategorie = eig.kategorie !== undefined ? eig.kategorie
             : (plan.schwerpunkt || null);
+
+  /* Seine letzte Wahl gilt weiter — sonst das, was der Tagesplan vorgibt,
+     sonst die erste Richtung bzw. der erste Umfang, den die Seite anbietet. */
+  var vs = varianten(), us = umfaenge();
+  variante = eig.variante !== undefined ? eig.variante
+           : (plan.variante || (vs.length ? vs[0].id : null));
+  if (variante !== "mix" && vs.length && !findeVariante(variante)) variante = vs[0].id;
+  umfang = eig.umfang !== undefined ? eig.umfang
+         : (plan.umfang || (us.length ? us[0].id : null));
 
   geruestBauen();
 
@@ -275,8 +339,11 @@ function geruestBauen() {
    ------------------------------------------------------------ */
 function auswahlBauen() {
   var s = Store.load();
+  var uf = null;
+  umfaenge().forEach(function (u) { if (u.id === umfang) uf = u; });
   aktiv = alleItems.filter(function (it) {
     if (kategorie && it.kategorie !== kategorie) return false;
+    if (uf && typeof uf.gilt === "function" && !uf.gilt(it)) return false;
     if (nurWackler) {
       var e = s.items[it.id];
       return !!e && e.letzter === "sassNicht";
@@ -338,6 +405,35 @@ function kopfZeichnen() {
 
   var knopfBox = $("lkKnoepfe");
   knopfBox.innerHTML = "";
+
+  /* Abfragerichtung — erst danach kommt, was den Stoff einschraenkt. */
+  var vs = varianten();
+  if (vs.length > 1) {
+    vs.forEach(function (v) {
+      knopfBox.appendChild(knopf(v.label || v.id, variante === v.id, function () {
+        variante = v.id; Eigene.merken("variante", v.id);
+        kopfZeichnen(); weiterMachen();
+      }));
+    });
+    knopfBox.appendChild(knopf("🔀 Gemischt", variante === "mix", function () {
+      variante = "mix"; Eigene.merken("variante", "mix");
+      kopfZeichnen(); weiterMachen();
+    }));
+    knopfBox.appendChild(trenner());
+  }
+
+  /* Umfang — welcher Ausschnitt ueberhaupt drankommt. */
+  var us = umfaenge();
+  if (us.length > 1) {
+    us.forEach(function (u) {
+      knopfBox.appendChild(knopf(u.label || u.id, umfang === u.id, function () {
+        umfang = u.id; Eigene.merken("umfang", u.id);
+        auswahlBauen(); kopfZeichnen(); weiterMachen();
+      }));
+    });
+    knopfBox.appendChild(trenner());
+  }
+
   knopfBox.appendChild(knopf("Nur meine Wackelkandidaten", nurWackler, function () {
     nurWackler = !nurWackler;
     auswahlBauen(); kopfZeichnen(); weiterMachen();
@@ -368,6 +464,14 @@ function kopfZeichnen() {
   knopfBox.appendChild(zurueck);
 }
 
+/* Schmaler Strich zwischen zwei Knopfgruppen — sonst verschwimmt in einer
+   langen Reihe, was Richtung ist und was Einschraenkung. */
+function trenner() {
+  var s = document.createElement("span");
+  s.className = "knopf-trenner";
+  return s;
+}
+
 function knopf(text, an, tun, aus) {
   var b = document.createElement("button");
   b.innerHTML = text;
@@ -393,6 +497,7 @@ function weiterMachen() {
   }
   jetzt = naechstesItem();
   if (!jetzt) return;
+  jetzt = variantePraegen(jetzt);
   var e = s.items[jetzt.id];
   warWackler = !!e && e.letzter === "sassNicht";
   geprueft = false; wahl = null;
@@ -578,10 +683,15 @@ ARTEN.karte = {
 
 /* --- 2. Rechnung mit Zwischenschritten -------------------- */
 function feldStimmt(feld, eingabe) {
-  if (feld.art === "text") {
+  /* Eine Loesung, die keine Zahl ist, kann nur Text sein. Frueher fiel so ein
+     Feld ohne ausdrueckliches art:"text" in den Zahlenvergleich und war damit
+     immer falsch — eine Falle, in die jede neue Seite einmal tappt. */
+  if (feld.art === "text" || isNaN(alsZahl(feld.loesung))) {
     var erlaubt = [feld.loesung].concat(feld.alternativen || []);
-    var e = normText(eingabe);
-    return erlaubt.some(function (l) { return normText(l) === e; });
+    var e = normText(eingabe), k = knapp(eingabe);
+    return erlaubt.some(function (l) {
+      return normText(l) === e || (k !== "" && knapp(l) === k);
+    });
   }
   var ist = alsZahl(eingabe), soll = alsZahl(feld.loesung);
   if (isNaN(ist) || isNaN(soll)) return false;
@@ -702,6 +812,63 @@ ARTEN.tabelle = {
       zelle.appendChild(hinweis);
     });
     return { richtig: allesGut, text: allesGut ? "" : "richtige Werte stehen jetzt darunter",
+             anhang: it.merke ? '<div class="begruendung"><b>Merke:</b> ' + it.merke + "</div>" : "" };
+  }
+};
+
+/* --- 5. Auswahl (Multiple Choice) -------------------------- */
+ARTEN.wahl = {
+  zeichnen: function (it, wo) {
+    var opts = it.optionen;
+    /* Keine eigenen Ablenker angegeben? Dann nimmt der Motor die Antworten
+       anderer Aufgaben derselben Seite — die sind vom Fach her plausibel
+       und aendern sich bei jedem Durchgang. */
+    if (!opts && it.ablenkerAus) {
+      var topf = [];
+      aktiv.forEach(function (a) {
+        var w = a[it.ablenkerAus];
+        if (a.id !== it.id && w && topf.indexOf(w) < 0) topf.push(w);
+      });
+      opts = shuffle(topf).slice(0, (it.anzahl || 4) - 1);
+      opts.push(it.loesung);
+    }
+    opts = shuffle((opts || []).slice());
+    var html = '<div class="wahl-liste" id="lkWahl">';
+    opts.forEach(function (o, n) {
+      html += '<button type="button" class="wahl-option" data-wert="' + esc(o) + '">'
+            +   '<span class="wahl-nr">' + (n + 1) + "</span>" + o
+            + "</button>";
+    });
+    html += "</div>";
+    if (it.hinweis) html += '<div class="hinweis-klein">' + it.hinweis + "</div>";
+    wo.innerHTML = html;
+
+    var liste = $("lkWahl");
+    liste.querySelectorAll(".wahl-option").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (geprueft) return;
+        liste.querySelectorAll(".wahl-option").forEach(function (x) {
+          x.classList.remove("gewaehlt");
+        });
+        b.classList.add("gewaehlt");
+        liste.dataset.gewaehlt = b.getAttribute("data-wert");
+      });
+    });
+  },
+  pruefen: function (it, wo) {
+    var liste = $("lkWahl");
+    var gewaehlt = liste ? (liste.dataset.gewaehlt || "") : "";
+    var richtig = gewaehlt === String(it.loesung);
+    if (liste) {
+      liste.querySelectorAll(".wahl-option").forEach(function (b) {
+        b.disabled = true;
+        var wert = b.getAttribute("data-wert");
+        if (wert === String(it.loesung)) b.classList.add("richtig");
+        else if (wert === gewaehlt) b.classList.add("falsch");
+      });
+    }
+    return { richtig: richtig,
+             text: gewaehlt ? "" : "nichts ausgewählt",
              anhang: it.merke ? '<div class="begruendung"><b>Merke:</b> ' + it.merke + "</div>" : "" };
   }
 };

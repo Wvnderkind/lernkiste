@@ -71,6 +71,39 @@ button.active{ background:var(--accent-soft); border-color:var(--accent); color:
 button:disabled{ opacity:.45; cursor:default; }
 button.danger{ border-color:var(--no); color:var(--no); }
 
+/* Trennt in der Knopfreihe die Abfragerichtung von dem, was den Stoff
+   einschraenkt. Auf schmalen Fenstern faellt er weg, sonst steht er
+   irgendwo mitten im Umbruch. */
+.knopf-trenner{
+  width:1px; align-self:stretch; background:var(--line); margin:.15rem .35rem;
+}
+@media (max-width:640px){ .knopf-trenner{ display:none; } }
+
+/* --- Auswahl (Multiple Choice) --- */
+.wahl-liste{ display:flex; flex-direction:column; gap:.5rem; margin:.2rem 0 .4rem; }
+.wahl-option{
+  display:flex; align-items:center; gap:.7rem; width:100%;
+  text-align:left; font-size:15px; padding:.7rem .9rem; line-height:1.4;
+}
+.wahl-nr{
+  flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+  width:1.55rem; height:1.55rem; border-radius:50%;
+  background:var(--surface); border:1px solid var(--line);
+  font-size:12px; font-weight:700; color:var(--text-dim);
+}
+.wahl-option.gewaehlt{
+  background:var(--accent-soft); border-color:var(--accent); color:var(--accent);
+}
+.wahl-option.gewaehlt .wahl-nr{ border-color:var(--accent); color:var(--accent); }
+.wahl-option.richtig{
+  background:var(--accent-soft); border-color:var(--ok); color:var(--ok); font-weight:600;
+}
+.wahl-option.richtig .wahl-nr{ border-color:var(--ok); color:var(--ok); }
+.wahl-option.falsch{ border-color:var(--no); color:var(--no); }
+.wahl-option.falsch .wahl-nr{ border-color:var(--no); color:var(--no); }
+.wahl-option:disabled{ opacity:1; cursor:default; }
+.wahl-option:disabled:not(.richtig):not(.falsch){ opacity:.5; }
+
 /* --- Aufgabenkarte --- */
 .card{
   background:var(--surface); border:1px solid var(--line); border-radius:12px;

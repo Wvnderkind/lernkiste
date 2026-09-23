@@ -1,6 +1,6 @@
 ---
 name: lern-interaktiv
-model: sonnet
+model: claude-opus-5-5
 tools: Read, Write, Edit, Bash, mcp__Claude_Browser__navigate, mcp__Claude_Browser__computer, mcp__Claude_Browser__read_console_messages, mcp__Claude_Browser__find
 description: Baut interaktive HTML-Lernseiten zum aktiven Üben (Selbsttest, Rechen-Drills, Quiz-Tabellen, SVG-Schemata, gespeicherter Fortschritt) für die Lernkiste-App. Fach-übergreifend (Biochemie, Physiologie, Chemie, Anatomie, Histologie, Physik …); Fachprofile stehen in ~/.claude/lernsystem/faecher/<fach>/fach.md. Nutze diesen Agenten bei "mach mir eine interaktive Seite zu X", "HTML-Lernseite Hirnnerven", "interaktive Tabelle für Y", "bau mir einen Rechen-Drill zu Puffern", "erstelle eine HTML-Lernseite", "mach ein Kompendium zu X". Erzeugt eine einzelne, offline öffenbare HTML-Datei und prüft sie vor der Abgabe im Browser.
 ---
@@ -139,7 +139,8 @@ Zurücksetzen, Enter-Steuerung, Speichern im SPEC-Format, Tagespensum,
 Abschlussbildschirm und GIFs. Eigene `<style>`- oder `<script>`-Blöcke mit
 Übungslogik sind ein Fehler.
 
-In `<body>` kommen nur die Merkkästen — der Motor schiebt sie automatisch unter
+In `<body>` kommen nur die Merkkästen — kein `.container`, keine Überschrift,
+kein Fußtext; der Motor baut das Gerüst selbst und schiebt die Kästen unter
 die Übung. Danach **ein** Skriptblock:
 
 ```html
@@ -148,6 +149,7 @@ Lernseite.start({
   id: "chemie/saeure-base/ph-und-titration",   // identisch mit dem Meta-Block
   version: 1,
   untertitel: "Ein Satz, der sagt, wofür die Seite gut ist.",
+  fussnote: "<p><b>Quellen:</b> … </p><p>Erstellt: TT.MM.JJJJ</p>",
   standard: { ziel: 20 },
   tagesplan: { "2026-10-01": { ziel: 30, kategorien: ["Puffer rechnen"] } },
   schemata: { titration: "<svg …>" },
@@ -157,7 +159,7 @@ Lernseite.start({
 </script>
 ```
 
-### Die vier Übungsarten
+### Die fünf Übungsarten
 
 Jede Aufgabe: `id` (seitenweit eindeutig), `art`, `kategorie`, dazu wahlweise
 `hinweis` (Tipp vorab) und `merke` (Begründung nach dem Prüfen — die ist Pflicht,
@@ -180,11 +182,21 @@ solange nicht schon die Lösung selbst erklärt, *warum*).
   kopf:"CH<sub>3</sub>COOH",
   zellen:[{ loesung:"CH3COO-", alternativen:["Acetat"], art:"text" },
           { loesung:"4,75" }] }
+
+{ id:"fehling", art:"wahl", kategorie:"Nachweise",
+  frage:"Was zeigt eine positive Fehling-Probe an?",
+  optionen:["Aldehyd", "Keton", "Carbonsäure", "Ester"], loesung:"Aldehyd",
+  merke:"Aldehyde werden oxidiert, Cu²⁺ wird zu rotem Cu₂O reduziert." }
 ```
+
+Bei `wahl` kann statt `optionen` auch `ablenkerAus:"feldname"` stehen — dann
+holt der Motor die Ablenker aus demselben Feld anderer Aufgaben der Seite.
 
 Felder und Zellen: ohne `art:"text"` wird als **Zahl** verglichen (Komma und
 `3,98e-4` erlaubt), ohne `toleranz` auf die Stellen der Lösung gerundet,
-mindestens zwei. Bei Text zählen Groß-/Kleinschreibung und Umlaute nicht.
+mindestens zwei; „−1" (echtes Minus) und „+2" werden verstanden. Bei Text
+zählen Groß-/Kleinschreibung, Umlaute, Bindestriche, Klammern und Leerzeichen
+nicht („Propan-2-ol" = „propan 2 ol").
 Im Text darf HTML stehen (`<sub>`, `&auml;`) — **in Kategorienamen nicht**, die
 sind zugleich Speicherschlüssel.
 
@@ -192,6 +204,19 @@ Für `svg` braucht jedes anklickbare Element ein `data-teil="…"`; Trefferfläc
 mindestens 26 px, Farben über `var(--…)`, die Kurve selbst bekommt
 `pointer-events="none"`. Einen Prüfen-Knopf gibt es hier nicht — der Klick ist
 die Antwort.
+
+### Varianten, Umfänge, gewürfelte Aufgaben
+
+- `varianten:[{ id, label, mix, bauen(it) }]` — Abfragerichtungen über denselben
+  Stoff (Symbol → Name, Name → Symbol …). `bauen` liefert die Felder, die sich für
+  diese Richtung ändern, oder `null`. Die Aufgaben-`id` bleibt immer gleich.
+  Ab zwei Varianten gibt es Knöpfe plus „Gemischt"; `mix:false` hält eine Richtung
+  aus „Gemischt" heraus.
+- **Eine einzige** Variante zeigt keinen Knopf, ihr `bauen` läuft aber bei jedem
+  Drankommen — so würfelst du Rechenaufgaben jedes Mal neu, ohne dass die `id`
+  wechselt (Beispiel: `Seiten/Chemie/Redox/oxidationszahlen.html`).
+- `umfaenge:[{ id, label, gilt(it) }]` — Ausschnitte wie „Elemente 1–18".
+- Vorbilder für alle Extras: die fünf Chemie-Seiten unter `Seiten/Chemie/`.
 
 ### Was trotzdem deine Aufgabe bleibt
 
