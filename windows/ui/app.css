@@ -1,0 +1,277 @@
+/* Rahmen der Lernkiste: Seitenleiste, Kopfzeile, Lernseite.
+   Farben wie in der Mac-App. */
+
+:root {
+  --leiste: #191b1c;
+  --seite: #0f1011;
+  --schrift: #e8eaea;
+  --leise: #949a9c;
+  --markierung: rgba(255, 255, 255, .085);
+  --linie: rgba(255, 255, 255, .09);
+  --feld: rgba(255, 255, 255, .06);
+  --feldrand: rgba(255, 255, 255, .1);
+  --stern: #ff9f0a;
+  --erledigt: #32c25c;
+  --akzent: #4c8dff;
+  --decke: rgba(0, 0, 0, .45);
+  --frage: #222526;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --leiste: #eef0f7;
+  --seite: #f7f7fb;
+  --schrift: #1a1a2e;
+  --leise: #5a5f7a;
+  --markierung: rgba(0, 0, 0, .075);
+  --linie: rgba(0, 0, 0, .09);
+  --feld: rgba(255, 255, 255, .85);
+  --feldrand: rgba(0, 0, 0, .12);
+  --stern: #f08c00;
+  --erledigt: #22a447;
+  --akzent: #2f6fe0;
+  --decke: rgba(20, 20, 40, .25);
+  --frage: #ffffff;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: flex;
+  overflow: hidden;
+  background: var(--seite);
+  color: var(--schrift);
+  font: 13px/1.35 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+}
+button { font: inherit; color: inherit; }
+svg { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Seitenleiste */
+
+#leiste {
+  width: 258px;
+  min-width: 230px;
+  max-width: 340px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--leiste);
+  padding: 10px 0 8px;
+}
+#griff {
+  width: 5px;
+  margin-left: -3px;
+  margin-right: -2px;
+  flex: none;
+  cursor: col-resize;
+  z-index: 2;
+}
+
+.suchfeld {
+  position: relative;
+  margin: 0 10px 8px;
+}
+.suchfeld svg {
+  position: absolute;
+  left: 8px; top: 50%;
+  width: 13px; height: 13px;
+  transform: translateY(-50%);
+  color: var(--leise);
+  pointer-events: none;
+}
+#suche {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px 0 27px;
+  border: 1px solid var(--feldrand);
+  border-radius: 7px;
+  background: var(--feld);
+  color: var(--schrift);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+#suche:focus { border-color: var(--akzent); }
+#suche::placeholder { color: var(--leise); }
+
+.startknopf {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 4px 6px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: default;
+}
+.startknopf svg { width: 15px; height: 15px; flex: none; }
+.startknopf.aktiv { background: var(--markierung); font-weight: 600; }
+
+#baum {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 12px;
+}
+#baum::-webkit-scrollbar { width: 8px; }
+#baum::-webkit-scrollbar-thumb { background: var(--markierung); border-radius: 4px; }
+
+.bereich {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 4px 2px;
+  padding: 2px 10px;
+  color: var(--leise);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  border-radius: 6px;
+}
+.bereich.klappbar { cursor: default; }
+.bereich:first-child { margin-top: 2px; }
+
+.zeile {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  margin: 0 4px;
+  padding: 2px 8px 2px calc(8px + var(--tiefe, 0) * 13px);
+  border-radius: 6px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: default;
+}
+.zeile.fach { font-size: 13px; font-weight: 500; }
+.zeile .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.zeile.aktiv { background: var(--markierung); }
+.zeile:focus-visible, .startknopf:focus-visible, .bereich:focus-visible { outline: 2px solid var(--akzent); outline-offset: -2px; }
+
+.pfeil {
+  width: 12px; height: 12px;
+  flex: none;
+  color: var(--leise);
+  transition: transform .12s;
+}
+.zu > .pfeil, .zeile.zu .pfeil, .bereich.zu .pfeil { transform: rotate(-90deg); }
+.platz { width: 12px; flex: none; }
+.haken { width: 13px; height: 13px; flex: none; color: var(--erledigt); stroke-width: 2; }
+
+.kinder.zu { display: none; }
+
+/* Hauptbereich */
+
+main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--seite);
+}
+#kopf {
+  height: 48px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 0 18px;
+  border-bottom: 1px solid transparent;
+  transition: border-color .15s;
+}
+#kopf.trenner { border-bottom-color: var(--linie); }
+.titelblock { flex: 1; min-width: 0; }
+#titel { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#unter { font-size: 11px; color: var(--leise); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.symbol {
+  width: 30px; height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--leise);
+}
+.symbol:hover { background: var(--markierung); color: var(--schrift); }
+.symbol svg { width: 16px; height: 16px; }
+#thema .voll { fill: currentColor; stroke: none; }
+#stern.an { color: var(--stern); }
+#stern.an svg { fill: currentColor; }
+
+.update {
+  height: 26px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--akzent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.update:hover:not(:disabled) { filter: brightness(1.08); }
+.update:disabled { opacity: .75; }
+
+#rahmen {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: var(--seite);
+}
+
+/* Frage „Wohin gehoert die Seite?" */
+
+.decke {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: var(--decke);
+}
+.decke[hidden] { display: none; }
+.frage {
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px 22px 18px;
+  border-radius: 10px;
+  background: var(--frage);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .35);
+}
+.frage h2 { margin: 0 0 6px; font-size: 15px; }
+.frage p { margin: 0 0 14px; color: var(--leise); font-size: 12.5px; line-height: 1.45; }
+.frage label { display: grid; grid-template-columns: 56px 1fr; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12.5px; }
+.frage input {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--feldrand);
+  border-radius: 6px;
+  background: var(--feld);
+  color: var(--schrift);
+  font: inherit;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.frage input:focus { border-color: var(--akzent); }
+.knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.knoepfe button {
+  min-width: 90px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--feldrand);
+  border-radius: 6px;
+  background: var(--feld);
+}
+.knoepfe .haupt { background: var(--akzent); border-color: var(--akzent); color: #fff; font-weight: 600; }
+
+/* „hidden" muss auch gegen display:grid/flex der Klassen gewinnen. */
+[hidden] { display: none !important; }

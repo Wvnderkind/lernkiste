@@ -1,12 +1,17 @@
 # Einrichtung der Lernkiste — Anleitung für Claude Code
 
-Du richtest gerade die **Lernkiste** ein: eine kleine Mac-App, in der interaktive
+Du richtest gerade die **Lernkiste** ein: eine kleine App für Mac und Windows, in der interaktive
 HTML-Lernseiten gesammelt und geöffnet werden. Die App ist fertig und muss **nicht**
 gebaut werden. Deine Aufgabe ist die Zulieferung: Agent, Fachprofile, Bauplan — und
 danach die Lernseiten selbst.
 
 Diese Datei liegt im heruntergeladenen Ordner unter `Fuer-Claude/`. Alle Pfade unten
 sind relativ zu diesem Ordner; nenne ihn im Folgenden `$PAKET`.
+
+> **Unter Windows?** Dann gelten überall statt `~/Documents/Lernkiste/` der Ordner
+> `Dokumente\Lernkiste\` (meist `C:\Users\<Name>\Documents\Lernkiste\`, bei
+> OneDrive auch `…\OneDrive\Dokumente\Lernkiste\`) und statt `~/.claude/` der Ordner
+> `%USERPROFILE%\.claude\`. Die Befehle für Schritt 1 stehen unten in PowerShell.
 
 ---
 
@@ -28,6 +33,30 @@ cp "$PAKET/Fuer-Claude/faecher/biochemie.md"      ~/.claude/lernsystem/faecher/b
 cp "$PAKET/Fuer-Claude/faecher/physiologie.md"    ~/.claude/lernsystem/faecher/physiologie/fach.md
 cp -R "$PAKET/Beispiel/"*                          ~/Documents/Lernkiste/Seiten/
 ```
+
+**Unter Windows** dasselbe in PowerShell. Der Dokumente-Ordner wird dabei von Windows
+erfragt, damit es auch klappt, wenn er in OneDrive liegt:
+
+```powershell
+# Pfad des entpackten Ordners anpassen
+$PAKET = "$HOME\Downloads\lernkiste-main"
+$DOKU  = [Environment]::GetFolderPath('MyDocuments')
+$KISTE = Join-Path $DOKU 'Lernkiste'
+
+New-Item -ItemType Directory -Force "$HOME\.claude\agents" | Out-Null
+New-Item -ItemType Directory -Force "$HOME\.claude\lernsystem\faecher\biochemie" | Out-Null
+New-Item -ItemType Directory -Force "$HOME\.claude\lernsystem\faecher\physiologie" | Out-Null
+New-Item -ItemType Directory -Force "$KISTE\Seiten" | Out-Null
+
+Copy-Item "$PAKET\Fuer-Claude\lern-interaktiv.md"     "$HOME\.claude\agents\"
+Copy-Item "$PAKET\Fuer-Claude\SPEC-Lernseiten.md"     "$KISTE\"
+Copy-Item "$PAKET\Fuer-Claude\faecher\biochemie.md"   "$HOME\.claude\lernsystem\faecher\biochemie\fach.md"
+Copy-Item "$PAKET\Fuer-Claude\faecher\physiologie.md" "$HOME\.claude\lernsystem\faecher\physiologie\fach.md"
+Copy-Item -Recurse -Force "$PAKET\Beispiel\*"          "$KISTE\Seiten\"
+```
+
+Die Windows-App legt die Beispielseite und den Motor (`Seiten\_motor\`) beim ersten
+Start ohnehin selbst an — schadet aber nicht, wenn sie schon da ist.
 
 Danach existiert:
 
@@ -77,7 +106,8 @@ Vor der Abgabe: Seite im Browser öffnen, `Lernseite.pruefen()` muss `[]` liefer
 sonst steht oben ein roter Kasten mit den Baufehlern.
 
 Nach jeder fertigen Seite in der App **Ablage → Seiten neu einlesen** (⌘R) — dann
-steht sie auf der Startseite.
+steht sie auf der Startseite. Unter Windows heißt es **Datei → Seiten neu einlesen**
+(Strg+R).
 
 ## Schritt 4 — Prüfen, bevor du abgibst
 
@@ -94,7 +124,8 @@ zu, und Layout und Konsole sehen beim Laden trotzdem sauber aus.
   lohnt sich `model: opus` — einfach in der ersten Zeile von
   `~/.claude/agents/lern-interaktiv.md` ändern.
 - Die App braucht **kein** Internet und schickt nichts weg. Alles liegt in
-  `~/Documents/Lernkiste/`.
+  `~/Documents/Lernkiste/` (Windows: `Dokumente\Lernkiste\`). Nur die Suche nach
+  neuen Fassungen der App fragt bei GitHub nach.
 - Der Fortschritt hängt an der App, nicht am Dateipfad: Ordner umbenennen oder
   verschieben kostet keinen Lernstand.
 - Die App liest den Ordner bei jedem Start neu ein; sie muss nie neu gebaut werden.

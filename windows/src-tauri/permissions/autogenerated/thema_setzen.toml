@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-thema-setzen"
+description = "Enables the thema_setzen command without any pre-configured scope."
+commands.allow = ["thema_setzen"]
+
+[[permission]]
+identifier = "deny-thema-setzen"
+description = "Denies the thema_setzen command without any pre-configured scope."
+commands.deny = ["thema_setzen"]

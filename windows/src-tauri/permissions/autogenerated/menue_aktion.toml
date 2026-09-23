@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-menue-aktion"
+description = "Enables the menue_aktion command without any pre-configured scope."
+commands.allow = ["menue_aktion"]
+
+[[permission]]
+identifier = "deny-menue-aktion"
+description = "Denies the menue_aktion command without any pre-configured scope."
+commands.deny = ["menue_aktion"]

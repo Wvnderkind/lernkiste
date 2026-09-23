@@ -9,3 +9,8 @@ zertifikat/
 # Die Veroeffentlichungs-Werkzeuge sind privat — sie enthalten die
 # Ersetzungstabelle mit persoenlichen Begriffen.
 Werkzeuge/
+
+# Windows-Fassung: Bauergebnisse und der private Updater-Schluessel
+windows/src-tauri/target/
+windows/src-tauri/gen/
+*.key

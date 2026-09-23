@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ort-antwort"
+description = "Enables the ort_antwort command without any pre-configured scope."
+commands.allow = ["ort_antwort"]
+
+[[permission]]
+identifier = "deny-ort-antwort"
+description = "Denies the ort_antwort command without any pre-configured scope."
+commands.deny = ["ort_antwort"]

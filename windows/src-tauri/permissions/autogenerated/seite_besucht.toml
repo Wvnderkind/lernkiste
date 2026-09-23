@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-seite-besucht"
+description = "Enables the seite_besucht command without any pre-configured scope."
+commands.allow = ["seite_besucht"]
+
+[[permission]]
+identifier = "deny-seite-besucht"
+description = "Denies the seite_besucht command without any pre-configured scope."
+commands.deny = ["seite_besucht"]

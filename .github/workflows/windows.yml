@@ -1,0 +1,79 @@
+# Baut die Windows-Fassung der Lernkiste auf GitHubs Windows-Rechnern.
+#
+# Laeuft bei jedem Hochladen auf main, wenn sich etwas an der Windows-App,
+# am Motor, an der Beispielseite oder am Stand geaendert hat. Ergebnis ist
+# ein Release "windows-<STAND>" mit dem Installer und latest.json — daran
+# erkennen installierte Lernkisten, dass es eine neue Fassung gibt.
+
+name: Windows
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - "Ressourcen/**"
+      - "Beispiel/**"
+      - "STAND"
+      - ".github/workflows/windows.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows
+  cancel-in-progress: false
+
+jobs:
+  bauen:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "windows/src-tauri -> target"
+
+      # STAND 202609231244 -> Version 2026.923.1244 (ohne fuehrende Nullen,
+      # damit sie als gueltige Versionsnummer zaehlt und immer waechst).
+      - name: Version aus STAND
+        id: stand
+        shell: bash
+        run: |
+          STAND="$(tr -dc '0-9' < STAND)"
+          [ "${#STAND}" = "12" ] || { echo "STAND ist kaputt: '$STAND'"; exit 1; }
+          VERSION="$(python -c "s='$STAND'; print(f'{int(s[:4])}.{int(s[4:8])}.{int(s[8:12])}')")"
+          echo "stand=$STAND" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          python - "$VERSION" <<'PY'
+          import json, sys
+          pfad = "windows/src-tauri/tauri.conf.json"
+          with open(pfad, encoding="utf-8") as f:
+              conf = json.load(f)
+          conf["version"] = sys.argv[1]
+          with open(pfad, "w", encoding="utf-8") as f:
+              json.dump(conf, f, ensure_ascii=False, indent=2)
+          PY
+          echo "Stand $STAND -> Version $VERSION"
+
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: windows
+          tagName: windows-${{ steps.stand.outputs.stand }}
+          releaseName: "Lernkiste für Windows ${{ steps.stand.outputs.version }}"
+          releaseBody: |
+            Installer herunterladen (Lernkiste_…_x64-setup.exe) und doppelklicken.
+            Meldet Windows „Windows hat den PC geschützt“: „Weitere Informationen“ → „Trotzdem ausführen“.
+            Wer die Lernkiste schon hat, bekommt diese Fassung über den Knopf „Update verfügbar“.
+          releaseDraft: false
+          prerelease: false
+          uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
+          args: --bundles nsis

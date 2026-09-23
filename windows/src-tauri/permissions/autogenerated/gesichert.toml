@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-gesichert"
+description = "Enables the gesichert command without any pre-configured scope."
+commands.allow = ["gesichert"]
+
+[[permission]]
+identifier = "deny-gesichert"
+description = "Denies the gesichert command without any pre-configured scope."
+commands.deny = ["gesichert"]

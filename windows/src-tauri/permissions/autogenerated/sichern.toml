@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sichern"
+description = "Enables the sichern command without any pre-configured scope."
+commands.allow = ["sichern"]
+
+[[permission]]
+identifier = "deny-sichern"
+description = "Denies the sichern command without any pre-configured scope."
+commands.deny = ["sichern"]

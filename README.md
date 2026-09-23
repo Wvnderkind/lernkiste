@@ -1,6 +1,6 @@
 # Lernkiste
 
-Eine kleine Mac-App, die alle eigenen HTML-Lernseiten an einem Ort sammelt: aufmachen,
+Eine kleine App für Mac und Windows, die alle eigenen HTML-Lernseiten an einem Ort sammelt: aufmachen,
 Seite anklicken, lernen. Kein Browser, kein Suchen in Ordnern, kein Chaos aus Tabs.
 Der Lernstand jeder Seite wird automatisch gesichert, und die Startseite zeigt,
 was heute dran ist und was noch wackelt.
@@ -8,8 +8,9 @@ was heute dran ist und was noch wackelt.
 Die Lernseiten selbst baut **Claude Code**. Was Claude dafür braucht, liegt in
 diesem Ordner mit dabei — es muss also niemand etwas von Grund auf entwickeln.
 
-> Läuft nur auf einem Mac. Kein Internet nötig, es wird nichts hochgeladen:
-> alles bleibt in `~/Documents/Lernkiste/`.
+> Läuft auf dem Mac und unter Windows 10/11 (für Windows siehe [unten](#windows)).
+> Kein Internet nötig, es wird nichts hochgeladen: alles bleibt in
+> `~/Documents/Lernkiste/` (Windows: `Dokumente\Lernkiste\`).
 
 ---
 
@@ -95,6 +96,7 @@ bitten, danach wieder einfügen.
 | `Fuer-Claude/faecher/` | Fachprofile für Biochemie und Physiologie als Muster |
 | `Beispiel/` | eine fertige Lernseite (Aminosäuren) als Vorlage |
 | `Quelle/`, `bauen.sh` | der Quelltext der App, falls jemand selbst daran bauen will |
+| `windows/` | der Quelltext der Windows-Fassung (den Installer baut GitHub) |
 
 ## Häufige Fragen
 
@@ -127,3 +129,35 @@ erlauben. Das liegt an der kostenlosen Signatur.
 Klappt das Update nicht (etwa weil die App nicht im Programme-Ordner liegt): ZIP erneut
 herunterladen und `Installieren.command` wieder ausführen. Was schiefging, steht in
 `~/Library/Logs/Lernkiste-Update.log`.
+
+---
+
+## Windows
+
+Für Windows 10 und 11 gibt es eine eigene Fassung mit Installer.
+
+1. **Herunterladen:** Auf GitHub rechts auf **Releases** klicken (oder direkt
+   [github.com/Wvnderkind/lernkiste/releases/latest](https://github.com/Wvnderkind/lernkiste/releases/latest))
+   und die Datei **`Lernkiste_…_x64-setup.exe`** laden.
+2. **Installieren:** Die Datei doppelklicken. Weil der Installer von keinem bezahlten
+   Zertifikat signiert ist, meldet sich Windows mit **„Windows hat den PC geschützt“**.
+   Dann auf **Weitere Informationen** und danach auf **Trotzdem ausführen** klicken.
+   Der Installer braucht keine Administratorrechte; die Lernkiste landet im
+   Startmenü.
+3. **Lernseiten** wohnen in `Dokumente\Lernkiste\Seiten\<Fach>\<Thema>\`. Beim
+   ersten Start liegt dort schon die Beispielseite. Über **Datei → Ordner mit den
+   Lernseiten öffnen** kommt man direkt hin.
+
+Alles andere funktioniert wie auf dem Mac — mit **Strg** statt ⌘ und dem Menü
+**Datei** statt **Ablage**: Seiten importieren (Strg+O), in die Leiste ziehen, aus der
+Zwischenablage einfügen (Strg+Umschalt+V), eine `.html`-Datei per Rechtsklick →
+**Öffnen mit → Lernkiste** hineinholen.
+
+**Updates kommen von selbst.** Gibt es eine neue Fassung, erscheint oben rechts der
+Knopf **Update verfügbar**. Ein Klick, **Jetzt aktualisieren** — die Lernkiste lädt
+die neue Fassung, installiert sie und startet neu. Lernseiten und Fortschritt bleiben
+erhalten. Von Hand geht es über **Hilfe → Nach Updates suchen …**.
+
+Wenn etwas nicht klappt, hilft das Protokoll unter
+`%LOCALAPPDATA%\de.lernkiste.app\logs\Lernkiste.log` (in die Adresszeile des
+Explorers einfügen).

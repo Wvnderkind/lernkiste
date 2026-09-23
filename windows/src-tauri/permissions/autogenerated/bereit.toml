@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-bereit"
+description = "Enables the bereit command without any pre-configured scope."
+commands.allow = ["bereit"]
+
+[[permission]]
+identifier = "deny-bereit"
+description = "Denies the bereit command without any pre-configured scope."
+commands.deny = ["bereit"]

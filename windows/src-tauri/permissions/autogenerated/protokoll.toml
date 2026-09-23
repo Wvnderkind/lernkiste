@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-protokoll"
+description = "Enables the protokoll command without any pre-configured scope."
+commands.allow = ["protokoll"]
+
+[[permission]]
+identifier = "deny-protokoll"
+description = "Denies the protokoll command without any pre-configured scope."
+commands.deny = ["protokoll"]

@@ -1,0 +1,31 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "haupt",
+  "description": "Die Oberfläche kommt vom eigenen Server auf 127.0.0.1. Sie darf Ereignisse empfangen und die eigenen Befehle der Lernkiste aufrufen — sonst nichts.",
+  "windows": [
+    "haupt"
+  ],
+  "remote": {
+    "urls": [
+      "http://127.0.0.1:*",
+      "http://localhost:*"
+    ]
+  },
+  "permissions": [
+    "core:event:default",
+    "allow-bibliothek",
+    "allow-neu-einlesen",
+    "allow-seite-besucht",
+    "allow-sichern",
+    "allow-thema-setzen",
+    "allow-favorit-umschalten",
+    "allow-extern-oeffnen",
+    "allow-menue-aktion",
+    "allow-ort-antwort",
+    "allow-gesichert",
+    "allow-beenden",
+    "allow-update-installieren",
+    "allow-bereit",
+    "allow-protokoll"
+  ]
+}

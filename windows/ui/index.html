@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lernkiste</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<aside id="leiste">
+  <div class="suchfeld">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6"/><path d="M10.4 10.4 14 14"/></svg>
+    <input id="suche" type="search" placeholder="Seite suchen" spellcheck="false" autocomplete="off" aria-label="Seite suchen">
+  </div>
+  <button id="start" class="startknopf" type="button">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 7.2 8 2.6l5.5 4.6"/><path d="M4 6.2V13h3V9.6h2V13h3V6.2"/></svg>
+    <span>Startseite</span>
+  </button>
+  <nav id="baum" aria-label="Lernseiten"></nav>
+</aside>
+<div id="griff" aria-hidden="true"></div>
+<main>
+  <header id="kopf">
+    <div class="titelblock">
+      <div id="titel">Lernkiste</div>
+      <div id="unter">Übersicht</div>
+    </div>
+    <button id="update" class="update" type="button" title="Neue Fassung der Lernkiste installieren" hidden></button>
+    <button id="stern" class="symbol" type="button" title="Seite anpinnen" aria-label="Seite anpinnen" hidden>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8l1.85 3.9 4.25.55-3.1 2.95.8 4.2L8 11.35 4.2 13.4l.8-4.2-3.1-2.95 4.25-.55z"/></svg>
+    </button>
+    <button id="thema" class="symbol" type="button" title="Hell / Dunkel" aria-label="Hell / Dunkel">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6"/><path class="voll" d="M8 2.4a5.6 5.6 0 0 0 0 11.2z"/></svg>
+    </button>
+  </header>
+  <iframe id="rahmen" title="Lernseite" allow="clipboard-read; clipboard-write"></iframe>
+</main>
+
+<div id="ort" class="decke" hidden>
+  <form class="frage" id="ortform" autocomplete="off">
+    <h2>Wohin gehört die Seite?</h2>
+    <p id="orttext"></p>
+    <label>Fach<input id="ortfach" list="ortfaecher" required></label>
+    <label>Thema<input id="ortthema" list="ortthemen" required></label>
+    <datalist id="ortfaecher"></datalist>
+    <datalist id="ortthemen"></datalist>
+    <div class="knoepfe">
+      <button type="button" id="ortab">Abbrechen</button>
+      <button type="submit" class="haupt">Ablegen</button>
+    </div>
+  </form>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
