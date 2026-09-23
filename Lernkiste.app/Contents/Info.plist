@@ -6,7 +6,7 @@
   <key>CFBundleDisplayName</key><string>Lernkiste</string>
   <key>CFBundleExecutable</key><string>Lernkiste</string>
   <key>CFBundleIdentifier</key><string>de.lernkiste.app</string>
-  <key>CFBundleVersion</key><string>202609231655</string>
+  <key>CFBundleVersion</key><string>202609231700</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleIconFile</key><string>Lernkiste</string>
@@ -20,7 +20,7 @@
     <key>LSItemContentTypes</key><array><string>public.html</string></array>
   </dict></array>
   <key>LernkisteUpdates</key><true/>
-  <key>LernkisteStand</key><string>202609231655</string>
+  <key>LernkisteStand</key><string>202609231700</string>
   <key>NSHumanReadableCopyright</key><string>Lernkiste — interaktive Lernseiten</string>
 </dict>
 </plist>

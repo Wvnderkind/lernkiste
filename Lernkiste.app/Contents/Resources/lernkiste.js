@@ -773,8 +773,10 @@ function aufgabeZeichnen(it) {
   $("btnSass").addEventListener("click", function () { selbst("sass"); });
   $("btnSassNicht").addEventListener("click", function () { selbst("sassNicht"); });
 
+  /* Fokus setzen, ohne zu scrollen: bei grossen Bildern laege das Feld sonst
+     unten und die Seite sprang dorthin — die Frage oben war weg. */
   var erstes = haupt.querySelector("input");
-  if (erstes) erstes.focus();
+  if (erstes) erstes.focus({ preventScroll: true });
 }
 
 function pruefen() {
@@ -800,7 +802,7 @@ function pruefen() {
   $("lkSelbst").style.display = "";
   markiereWahl();
   $("btnWeiter").style.display = "";
-  $("btnWeiter").focus();
+  $("btnWeiter").focus({ preventScroll: true });
 }
 
 /* Mit der Maus bleibt beides frei waehlbar — auch gegen das Urteil des Motors. */
