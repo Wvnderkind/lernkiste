@@ -511,6 +511,7 @@ function geruestBauen() {
   }
   klappbarMachen();
   enterEinhaengen();
+  tippenUmleiten();
 }
 
 /* Jeder Hinweiskasten mit .box-title laesst sich ueber den Titel zuklappen.
@@ -781,10 +782,57 @@ function aufgabeZeichnen(it) {
   $("btnSass").addEventListener("click", function () { selbst("sass"); });
   $("btnSassNicht").addEventListener("click", function () { selbst("sassNicht"); });
 
-  /* Fokus setzen, ohne zu scrollen: bei grossen Bildern laege das Feld sonst
-     unten und die Seite sprang dorthin — die Frage oben war weg. */
+  /* Fokus nur, wenn das Feld schon ganz im Bild ist. WebKit (die Engine der
+     App) holt den Cursor eines fokussierten Feldes kurz darauf trotz
+     preventScroll ins Bild — bei grossen Bildern oder dem Heute-Kasten
+     sprang die Seite so nach unten und die Frage oben war weg. Liegt das
+     Feld tiefer, bekommt es den Fokus erst beim ersten Tippen. */
   var erstes = haupt.querySelector("input");
-  if (erstes) erstes.focus({ preventScroll: true });
+  if (erstes && ganzImBild(erstes)) erstes.focus({ preventScroll: true });
+  scrollHalten();
+}
+
+function ganzImBild(el) {
+  var r = el.getBoundingClientRect();
+  return r.top >= 0 && r.bottom <= (window.innerHeight || document.documentElement.clientHeight);
+}
+
+/* Nach dem Zeichnen einer Aufgabe darf nur er selbst scrollen. Laedt ein Bild
+   nach und schiebt das Feld aus dem Bild, rueckt WebKit von sich aus nach —
+   das wird hier zurueckgenommen, solange er weder Maus, Rad noch Tasten
+   benutzt hat. */
+var scrollWache = null;
+function scrollHalten() {
+  if (scrollWache) scrollWache();
+  var y = window.scrollY, bis = Date.now() + 1500, frei = false;
+  function selbst() { frei = true; }
+  function zurueck() {
+    if (frei || Date.now() > bis) { weg(); return; }
+    if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
+  }
+  var arten = ["wheel", "mousedown", "keydown", "touchstart"];
+  function weg() {
+    window.removeEventListener("scroll", zurueck);
+    arten.forEach(function (a) { window.removeEventListener(a, selbst, true); });
+    scrollWache = null;
+  }
+  window.addEventListener("scroll", zurueck);
+  arten.forEach(function (a) { window.addEventListener(a, selbst, true); });
+  scrollWache = weg;
+}
+
+/* Tippt er los, ohne vorher ins Feld zu klicken, landet der Text trotzdem
+   im ersten Feld der Aufgabe. */
+function tippenUmleiten() {
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key.length !== 1 || ev.altKey || ev.metaKey || ev.ctrlKey || ev.isComposing) return;
+    var ziel = ev.target;
+    if (ziel && (ziel.tagName === "INPUT" || ziel.tagName === "TEXTAREA"
+                 || ziel.tagName === "SELECT" || ziel.isContentEditable)) return;
+    if (geprueft) return;
+    var feld = document.querySelector("#lkHaupt input:not([disabled])");
+    if (feld) feld.focus();
+  });
 }
 
 function pruefen() {
