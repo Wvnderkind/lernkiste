@@ -419,17 +419,39 @@ function start(cfg) {
                        nurGesetzte(vonApp));
 
   var eig = Eigene.load();
-  kategorie = eig.kategorie !== undefined ? eig.kategorie
-            : (plan.schwerpunkt || null);
+
+  /* Kategorie: seine Wahl, sonst plan.kategorien, sonst ein schwerpunkt, der
+     zufaellig genau eine Kategorie benennt. Alles, was die Seite nicht kennt,
+     faellt weg — "schwerpunkt" ist meist nur ein Beschreibungstext, und ein
+     Filter auf einen unbekannten Namen liesse keine einzige Aufgabe uebrig. */
+  var kats = [];
+  alleItems.forEach(function (it) {
+    if (it.kategorie && kats.indexOf(it.kategorie) < 0) kats.push(it.kategorie);
+  });
+  function gueltigeKategorie(w) {
+    var liste = (Array.isArray(w) ? w : [w]).filter(function (k) {
+      return typeof k === "string" && kats.indexOf(k) >= 0;
+    });
+    return liste.length === 0 ? null : liste.length === 1 ? liste[0] : liste;
+  }
+  kategorie = gueltigeKategorie(eig.kategorie !== undefined ? eig.kategorie
+                              : plan.kategorien !== undefined ? plan.kategorien
+                              : plan.kategorie !== undefined ? plan.kategorie
+                              : plan.schwerpunkt);
 
   /* Seine letzte Wahl gilt weiter — sonst das, was der Tagesplan vorgibt,
-     sonst die erste Richtung bzw. der erste Umfang, den die Seite anbietet. */
+     sonst die erste Richtung bzw. der erste Umfang, den die Seite anbietet.
+     Ids werden als Text verglichen: im Plan steht oft "umfang": 20 statt "20". */
   var vs = varianten(), us = umfaenge();
   variante = eig.variante !== undefined ? eig.variante
            : (plan.variante || (vs.length ? vs[0].id : null));
   if (variante !== "mix" && vs.length && !findeVariante(variante)) variante = vs[0].id;
-  umfang = eig.umfang !== undefined ? eig.umfang
-         : (plan.umfang || (us.length ? us[0].id : null));
+  umfang = eig.umfang !== undefined && eig.umfang !== null ? eig.umfang
+         : (plan.umfang !== undefined && plan.umfang !== null ? plan.umfang
+            : (us.length ? us[0].id : null));
+  umfang = umfang === null ? null : String(umfang);
+  var umfangBekannt = us.some(function (u) { return String(u.id) === umfang; });
+  if (us.length && !umfangBekannt) umfang = String(us[0].id);
 
   geruestBauen();
   /* Die Pruefung darf nie selbst die Seite umwerfen. */
@@ -494,9 +516,10 @@ function geruestBauen() {
 function auswahlBauen() {
   var s = Store.load();
   var uf = null;
-  umfaenge().forEach(function (u) { if (u.id === umfang) uf = u; });
+  umfaenge().forEach(function (u) { if (String(u.id) === umfang) uf = u; });
   aktiv = alleItems.filter(function (it) {
-    if (kategorie && it.kategorie !== kategorie) return false;
+    if (kategorie && (Array.isArray(kategorie) ? kategorie.indexOf(it.kategorie) < 0
+                                               : it.kategorie !== kategorie)) return false;
     if (uf && typeof uf.gilt === "function" && !uf.gilt(it)) return false;
     if (nurWackler) {
       var e = s.items[it.id];
@@ -580,8 +603,8 @@ function kopfZeichnen() {
   var us = umfaenge();
   if (us.length > 1) {
     us.forEach(function (u) {
-      knopfBox.appendChild(knopf(u.label || u.id, umfang === u.id, function () {
-        umfang = u.id; Eigene.merken("umfang", u.id);
+      knopfBox.appendChild(knopf(u.label || u.id, umfang === String(u.id), function () {
+        umfang = String(u.id); Eigene.merken("umfang", u.id);
         auswahlBauen(); kopfZeichnen(); weiterMachen();
       }));
     });
@@ -599,7 +622,7 @@ function kopfZeichnen() {
       auswahlBauen(); kopfZeichnen(); weiterMachen();
     }));
     kats.forEach(function (kat) {
-      knopfBox.appendChild(knopf(kat, kategorie === kat, function () {
+      knopfBox.appendChild(knopf(kat, kategorie === kat || (Array.isArray(kategorie) && kategorie.indexOf(kat) >= 0), function () {
         kategorie = kat; Eigene.merken("kategorie", kat);
         auswahlBauen(); kopfZeichnen(); weiterMachen();
       }));

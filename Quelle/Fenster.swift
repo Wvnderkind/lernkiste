@@ -17,6 +17,11 @@ final class Knoten: NSObject {
         kinder.forEach { $0.eltern = self }
     }
     var istGruppe: Bool { art == .bereich }
+
+    /// Fester Name fuer den Klappzustand, z. B. "Aktuell/Chemie/Periodensystem".
+    /// Haengt nur an den Namen, nicht am Objekt — die Knoten entstehen bei
+    /// jedem Einlesen neu.
+    var schluessel: String { (eltern.map { $0.schluessel + "/" } ?? "") + name }
 }
 
 /// Die Farben der Seitenleiste — dieselben Werte wie auf den Lernseiten
@@ -142,6 +147,13 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     private var wurzel: [Knoten] = []
     private var suchtext = ""
     private var aktuelleSeite: Seite?
+
+    /// Was er in der Leiste selbst auf- oder zugeklappt hat (true = offen).
+    /// Liegt in den Einstellungen der App und ueberlebt so den Neustart.
+    private var klappzustand = UserDefaults.standard
+        .dictionary(forKey: "LeisteKlappzustand") as? [String: Bool] ?? [:]
+    /// Waehrend die App selbst klappt, sind die Meldungen kein Wunsch von ihm.
+    private var klapptSelbst = false
 
     private let server = Server()
     private var uhr: Timer?
@@ -507,15 +519,40 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         return Knoten(art: .fach, name: fach.name, kinder: kinder)
     }
 
-    /// Aktuelle Fächer offen, das Physikum-Archiv zugeklappt.
+    /// Stellt den Klappzustand her: was er selbst zu- oder aufgeklappt hat,
+    /// bleibt so; sonst aktuelle Fächer offen, das Physikum-Archiv zu.
+    /// Beim Suchen ist alles offen, damit jeder Treffer zu sehen ist.
     private func standardAufklappen() {
         guard liste != nil else { return }
         for bereich in wurzel {
-            liste.expandItem(bereich)
-            let alles = bereich.name != "Fürs Physikum" || !suchtext.isEmpty
-            for kind in bereich.kinder where alles {
-                liste.expandItem(kind, expandChildren: true)
-            }
+            klappen(bereich, standard: true, fuerKinder: bereich.name != "Fürs Physikum")
+        }
+    }
+
+    private func klappen(_ knoten: Knoten, standard: Bool, fuerKinder: Bool) {
+        guard knoten.art != .seite, !knoten.kinder.isEmpty else { return }
+        let offen = !suchtext.isEmpty || (klappzustand[knoten.schluessel] ?? standard)
+        klapptSelbst = true
+        if offen { liste.expandItem(knoten) } else { liste.collapseItem(knoten) }
+        klapptSelbst = false
+        // Kinder eines zugeklappten Knotens richtet erst outlineViewItemDidExpand
+        // her, sobald er ihn aufmacht — vorher sind sie ohnehin unsichtbar.
+        guard offen else { return }
+        for kind in knoten.kinder {
+            klappen(kind, standard: fuerKinder, fuerKinder: fuerKinder)
+        }
+    }
+
+    private func klappzustandMerken(_ note: Notification, offen: Bool) {
+        guard !klapptSelbst, suchtext.isEmpty,
+              let knoten = note.userInfo?["NSObject"] as? Knoten else { return }
+        klappzustand[knoten.schluessel] = offen
+        UserDefaults.standard.set(klappzustand, forKey: "LeisteKlappzustand")
+        if offen {
+            var bereich = knoten
+            while let e = bereich.eltern { bereich = e }
+            let standard = bereich.name != "Fürs Physikum"
+            for kind in knoten.kinder { klappen(kind, standard: standard, fuerKinder: standard) }
         }
     }
 
@@ -898,6 +935,9 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     func outlineView(_ v: NSOutlineView, isItemExpandable item: Any) -> Bool {
         !((item as? Knoten)?.kinder.isEmpty ?? true)
     }
+    func outlineViewItemDidExpand(_ note: Notification) { klappzustandMerken(note, offen: true) }
+    func outlineViewItemDidCollapse(_ note: Notification) { klappzustandMerken(note, offen: false) }
+
     func outlineView(_ v: NSOutlineView, isGroupItem item: Any) -> Bool {
         (item as? Knoten)?.istGruppe ?? false
     }
