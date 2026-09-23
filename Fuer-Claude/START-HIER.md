@@ -62,14 +62,19 @@ Die drei Punkte, an denen es am häufigsten hakt:
 2. **Meta-Block im `<head>`.** Ohne `lernkiste-id`, `lernkiste-titel`, `lernkiste-typ`
    und `lernkiste-version` taucht die Seite in der App nicht auf. Die `id` muss zum
    Ablageort passen, kleingeschrieben und ohne Umlaute.
-3. **Genau ein localStorage-Schlüssel** `lern:<id>@v<version>` im vorgeschriebenen
-   Format. Daraus rechnet die App die Fortschrittsanzeige. Kein Export-Knopf.
+3. **Der Motor.** Jede Seite bindet `../../_motor/lernkiste.css` und
+   `../../_motor/lernkiste.js` ein und ruft einmal `Lernseite.start({...})` auf.
+   Fortschritt, Tagespensum, Wiederholung und Abschlussbildschirm liefert der Motor —
+   die Seite enthält nur Stoff. Kein eigenes localStorage, kein Export-Knopf.
 
 Die Beispielseite `Seiten/Biochemie/Aminosaeuren/aminosaeuren-grundlagen.html` erfüllt
 den Bauplan vollständig — **nimm sie als Vorlage**, statt eine Seite von Null zu
-schreiben. Sie enthält bereits: Meta-Block, Fortschritts-Schlüssel, Tagespensum mit
-Abschlussbildschirm, Wackelkandidaten-Logik, Farb-Tokens, Enter-Steuerung und die
-Brücke `window.Lernkiste` mit sauberem Rückfall, wenn die Seite im Browser läuft.
+schreiben. Sie zeigt vier der fünf Übungsarten (`wahl` mit drei Abfragerichtungen über
+`varianten`, `rechnung`, `tabelle`, `svg`) und die vier Merkkasten-Sorten.
+`karte` fehlt dort; wie sie aussieht, steht im Bauplan.
+
+Vor der Abgabe: Seite im Browser öffnen, `Lernseite.pruefen()` muss `[]` liefern —
+sonst steht oben ein roter Kasten mit den Baufehlern.
 
 Nach jeder fertigen Seite in der App **Ablage → Seiten neu einlesen** (⌘R) — dann
 steht sie auf der Startseite.
