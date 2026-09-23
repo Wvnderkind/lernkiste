@@ -26,7 +26,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         f.window?.makeKeyAndOrderFront(nil)
         fenster = f
         NSApp.activate(ignoringOtherApps: true)
+
+        // Nur die öffentliche Fassung sieht auf GitHub nach neuen Fassungen.
+        let updater = Updater.shared
+        updater.anzeige = { [weak f] text, klickbar in f?.updateKnopfSetzen(text, klickbar: klickbar) }
+        updater.vorDemNeustart = { [weak f] weiter in
+            if let f { f.fortschrittSichern(dann: weiter) } else { weiter() }
+        }
+        updater.starten()
     }
+
+    @objc func nachUpdatesSuchen() { Updater.shared.nachsehen(still: false) }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { true }
 
@@ -62,6 +72,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: "Über Lernkiste",
                         action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        if Updater.aktiv {
+            let suchen = NSMenuItem(title: "Nach Updates suchen …",
+                                    action: #selector(nachUpdatesSuchen), keyEquivalent: "")
+            suchen.target = self
+            appMenu.addItem(suchen)
+        }
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Lernkiste ausblenden",
                         action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")

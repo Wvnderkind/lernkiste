@@ -115,5 +115,15 @@ Ja. Jede Lernseite ist eine einzelne HTML-Datei und funktioniert per Doppelklick
 im Browser — nur ohne Startseite, Tagesplan und Fortschrittsübersicht.
 
 **„Wie kommt eine neue Fassung der App auf meinen Rechner?"**
-ZIP erneut herunterladen und `Installieren.command` wieder ausführen. Die alte Fassung
-wandert in den Papierkorb, die Lernseiten und der Fortschritt bleiben unangetastet.
+Von selbst. Die App sieht beim Start nach, ob es auf GitHub eine neuere Fassung gibt.
+Wenn ja, erscheint oben rechts der Knopf **Update verfügbar**. Ein Klick, einmal
+bestätigen: Die App lädt die neue Fassung, tauscht sich aus und startet neu. Die alte
+Fassung wandert in den Papierkorb, die Lernseiten und der Fortschritt bleiben
+unangetastet. Von Hand geht es über **Lernkiste → Nach Updates suchen …**.
+
+Danach kann macOS noch einmal nach dem Zugriff auf **Dokumente** fragen — einfach
+erlauben. Das liegt an der kostenlosen Signatur.
+
+Klappt das Update nicht (etwa weil die App nicht im Programme-Ordner liegt): ZIP erneut
+herunterladen und `Installieren.command` wieder ausführen. Was schiefging, steht in
+`~/Library/Logs/Lernkiste-Update.log`.

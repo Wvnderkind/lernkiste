@@ -152,6 +152,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     private var titelLabel: NSTextField!
     private var unterLabel: NSTextField!
     private var sternKnopf: NSButton!
+    private var updateKnopf: NSButton!
     private var startKnopf: NSButton!
     private var startPille: NSView!
     private var seitenleisteHG: SeitenleistenHintergrund!
@@ -321,7 +322,16 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         themaKnopf.isBordered = false
         themaKnopf.toolTip = "Hell / Dunkel"
 
-        let kopf = NSStackView(views: [texte, NSView(), sternKnopf, themaKnopf])
+        // Nur sichtbar, wenn die öffentliche Fassung eine neuere auf GitHub findet.
+        updateKnopf = NSButton(title: "Update verfügbar", target: Updater.shared,
+                               action: #selector(Updater.installierenFragen))
+        updateKnopf.bezelStyle = .rounded
+        updateKnopf.controlSize = .small
+        updateKnopf.bezelColor = .controlAccentColor
+        updateKnopf.toolTip = "Neue Fassung der Lernkiste installieren"
+        updateKnopf.isHidden = true
+
+        let kopf = NSStackView(views: [texte, NSView(), updateKnopf, sternKnopf, themaKnopf])
         kopf.orientation = .horizontal
         kopf.spacing = 10
         kopf.edgeInsets = NSEdgeInsets(top: 5, left: 8, bottom: 10, right: 14)
@@ -602,8 +612,12 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     // MARK: Fortschritt
 
     /// Liest den gespeicherten Stand aus der offenen Seite und legt ihn als Datei ab.
-    private func fortschrittSichern() {
-        guard let seite = aktuelleSeite else { return }
+    private func fortschrittSichern() { fortschrittSichern(dann: nil) }
+
+    /// Wie oben, meldet sich aber, wenn der Stand wirklich auf der Platte liegt —
+    /// der Updater wartet darauf, bevor er die App austauscht.
+    func fortschrittSichern(dann: (() -> Void)?) {
+        guard let seite = aktuelleSeite else { dann?(); return }
         let js = """
         (function(){var o={};for(var i=0;i<localStorage.length;i++){
         var k=localStorage.key(i);if(k&&k.indexOf('lern:')===0)o[k]=localStorage.getItem(k);}
@@ -613,9 +627,10 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
             guard let text = ergebnis as? String,
                   let daten = text.data(using: .utf8),
                   let roh = try? JSONDecoder().decode([String: String].self, from: daten)
-            else { return }
+            else { dann?(); return }
             let stand = Fortschritt.auswerten(roh: roh, seite: seite)
             Fortschritt.sichern(stand)
+            dann?()
             DispatchQueue.main.async { [weak self] in
                 self?.staende[seite.id] = stand
                 self?.liste.reloadData()
@@ -625,6 +640,14 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     }
 
     @objc private func fensterSchliesst() { fortschrittSichern() }
+
+    /// Text nil blendet den Update-Knopf aus.
+    func updateKnopfSetzen(_ text: String?, klickbar: Bool) {
+        guard updateKnopf != nil else { return }
+        updateKnopf.isHidden = text == nil
+        if let text { updateKnopf.title = text }
+        updateKnopf.isEnabled = klickbar
+    }
 
     // MARK: Brücke zur Seite
 
