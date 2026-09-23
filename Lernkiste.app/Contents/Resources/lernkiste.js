@@ -119,7 +119,7 @@ var Store = (function () {
   var mem = null;
   function leer() {
     return { items: {}, gesamt: 0,
-             tagespensum: { datum: "", ziel: 20, geschafft: 0, treffer: 0 },
+             tagespensum: { datum: "", ziel: 20, geschafft: 0, treffer: 0, offen: {} },
              zuletztGeoeffnet: "" };
   }
   return {
@@ -462,7 +462,7 @@ function start(cfg) {
   var s = Store.load();
   s.gesamt = alleItems.length;
   if (s.tagespensum.datum !== heuteStr()) {
-    s.tagespensum = { datum: heuteStr(), ziel: plan.ziel, geschafft: 0, treffer: 0 };
+    s.tagespensum = { datum: heuteStr(), ziel: plan.ziel, geschafft: 0, treffer: 0, offen: {} };
   } else {
     s.tagespensum.ziel = plan.ziel;
   }
@@ -583,8 +583,27 @@ function schlangeFuellen() {
   }
 }
 
+/* Heute falsch beantwortete Aufgaben muessen heute noch zweimal hintereinander
+   sitzen, bevor der Tag geschafft ist. tagespensum.offen: { id: richtigInFolge }.
+   Es zaehlen nur die aus der aktuellen Auswahl — die anderen sind hier nicht erreichbar. */
+var NACHHOLEN_RICHTIG = 2;
+function offeneVonHeute(s) {
+  var offen = s.tagespensum.offen || {};
+  return aktiv.filter(function (it) { return offen.hasOwnProperty(it.id); });
+}
+
 function naechstesItem() {
   if (!aktiv.length) return null;
+  var s = Store.load();
+  /* Tagesziel erreicht, aber heutige Wackler noch offen: nur noch die. */
+  if (!weiterUeben && s.tagespensum.geschafft >= s.tagespensum.ziel) {
+    var offen = offeneVonHeute(s);
+    if (offen.length) {
+      var andere = offen.filter(function (it) { return !jetzt || it.id !== jetzt.id; });
+      var pool = andere.length ? andere : offen;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+  }
   if (!schlange.length) schlangeFuellen();
   return schlange.shift();
 }
@@ -603,12 +622,14 @@ function kopfZeichnen() {
   });
   var tp = s.tagespensum;
   var quote = tp.geschafft ? Math.round(100 * tp.treffer / tp.geschafft) : 0;
+  var nachholen = offeneVonHeute(s).length;
 
   $("lkStats").innerHTML =
       "Heute geschafft <b>" + tp.geschafft + " / " + tp.ziel + "</b>"
     + "<span>Trefferquote <b>" + quote + " %</b></span>"
     + "<span>Sitzt: <b>" + sitzen + " / " + alleItems.length + "</b></span>"
-    + "<span>Wackelkandidaten: <b>" + wackler + "</b></span>";
+    + "<span>Wackelkandidaten: <b>" + wackler + "</b></span>"
+    + (nachholen ? '<span class="lk-nachholen">Vor dem Ziel noch festigen: <b>' + nachholen + "</b></span>" : "");
   $("lkBalken").style.width = Math.min(100, Math.round(100 * tp.geschafft / Math.max(1, tp.ziel))) + "%";
 
   var kats = [];
@@ -668,7 +689,7 @@ function kopfZeichnen() {
   var zurueck = knopf("Fortschritt zurücksetzen", false, function () {
     Store.reset();
     var n = Store.load(); n.gesamt = alleItems.length;
-    n.tagespensum = { datum: heuteStr(), ziel: plan.ziel, geschafft: 0, treffer: 0 };
+    n.tagespensum = { datum: heuteStr(), ziel: plan.ziel, geschafft: 0, treffer: 0, offen: {} };
     Store.save(n);
     serie = 0; fehl = {}; weiterUeben = false; jetzt = null;
     auswahlBauen(); kopfZeichnen(); weiterMachen();
@@ -699,7 +720,8 @@ function knopf(text, an, tun, aus) {
    ------------------------------------------------------------ */
 function weiterMachen() {
   var s = Store.load();
-  if (!weiterUeben && s.tagespensum.geschafft >= s.tagespensum.ziel) { fertigSchirm(); return; }
+  if (!weiterUeben && s.tagespensum.geschafft >= s.tagespensum.ziel
+      && !offeneVonHeute(s).length) { fertigSchirm(); return; }
   if (!aktiv.length) {
     $("lkHaupt").innerHTML = '<div class="leer-hinweis">'
       + (nurWackler ? "Kein Wackelkandidat übrig — alles sitzt gerade."
@@ -814,6 +836,12 @@ function buchen(it, richtig) {
   s.gesamt = alleItems.length;
   s.tagespensum.geschafft++;
   if (richtig) s.tagespensum.treffer++;
+  var offen = s.tagespensum.offen = s.tagespensum.offen || {};
+  if (!richtig) offen[it.id] = 0;
+  else if (offen.hasOwnProperty(it.id)) {
+    offen[it.id]++;
+    if (offen[it.id] >= NACHHOLEN_RICHTIG) delete offen[it.id];
+  }
   Store.save(s);
 
   if (richtig) {

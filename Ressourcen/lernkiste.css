@@ -251,3 +251,6 @@ footer p{ margin:.3rem 0; }
   :root{ --bg:#fff; --surface:#fff; --text:#000; --text-dim:#444; }
   .box{ border:1px solid #999; break-inside:avoid; }
 }
+
+/* Tagesziel erreicht, aber heutige Wackler noch offen */
+.lk-nachholen b{ color:var(--orange); }

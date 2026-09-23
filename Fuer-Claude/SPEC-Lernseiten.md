@@ -67,7 +67,8 @@ Inhalt, exakt dieses Format — die App zeigt daraus die Fortschrittsanzeige:
     "datum": "2026-09-21",
     "ziel": 20,
     "geschafft": 12,
-    "treffer": 9
+    "treffer": 9,
+    "offen": { "item-id": 1 }
   },
   "zuletztGeoeffnet": "2026-09-21T14:32:00"
 }
@@ -91,6 +92,12 @@ Stand in `~/Documents/Lernkiste/fortschritt/` ab. Der alte Knopf
 Unverändert wie gehabt: `const TAGESPLAN = {'JJJJ-MM-TT': {ziel, schwerpunkt, hinweis}}`
 plus `STANDARD`-Fallback, Fortschrittsleiste „Heute geschafft x / n", Abschlussbildschirm
 „Geschafft für heute" mit Trefferquote, Knopf „Trotzdem weiterüben".
+
+**Heutige Wackler zuerst festigen:** Was heute falsch beantwortet wurde, steht in
+`tagespensum.offen` (`id → richtig in Folge`). Ist das Ziel erreicht, aber noch etwas
+offen, fragt der Motor nur noch diese Aufgaben ab — jede muss **zweimal hintereinander**
+sitzen, erst dann kommt „Geschafft für heute". Die Kopfzeile zeigt dabei
+„Vor dem Ziel noch festigen: n". Es zählen nur Aufgaben aus der aktuellen Auswahl.
 
 Neu: Die Seite darf den Tagesplan auch von der App beziehen, wenn sie dort läuft.
 **Der Plan aus der App ergänzt die Voreinstellungen, er ersetzt sie nicht** — sonst
