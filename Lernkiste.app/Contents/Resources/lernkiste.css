@@ -91,6 +91,7 @@ button.danger{ border-color:var(--no); color:var(--no); }
   background:var(--surface); border:1px solid var(--line);
   font-size:12px; font-weight:700; color:var(--text-dim);
 }
+.wahl-text{ flex:1 1 auto; min-width:0; }
 .wahl-option.gewaehlt{
   background:var(--accent-soft); border-color:var(--accent); color:var(--accent);
 }

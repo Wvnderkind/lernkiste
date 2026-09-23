@@ -1135,7 +1135,10 @@ ARTEN.wahl = {
     var html = '<div class="wahl-liste" id="lkWahl">';
     opts.forEach(function (o, n) {
       html += '<button type="button" class="wahl-option" data-wert="' + esc(o) + '">'
-            +   '<span class="wahl-nr">' + (n + 1) + "</span>" + o
+            +   '<span class="wahl-nr">' + (n + 1) + "</span>"
+            /* Eigenes Element: sonst wird im Flex-Knopf jedes <sub>/<sup> zu
+               einem eigenen Stueck mit Abstand — aus pK<sub>S</sub> wurde "pK  S". */
+            +   '<span class="wahl-text">' + o + "</span>"
             + "</button>";
     });
     html += "</div>";
