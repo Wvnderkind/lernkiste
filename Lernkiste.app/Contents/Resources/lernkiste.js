@@ -680,7 +680,15 @@ function kopfZeichnen() {
     }));
     kats.forEach(function (kat) {
       knopfBox.appendChild(knopf(kat, kategorie === kat || (Array.isArray(kategorie) && kategorie.indexOf(kat) >= 0), function () {
-        kategorie = kat; Eigene.merken("kategorie", kat);
+        /* Mehrfachauswahl: jeder Kategorie-Knopf schaltet an und aus.
+           Nichts oder alles gewaehlt heisst wieder "Alle Kategorien". */
+        var gewaehlt = kategorie === null ? [] : Array.isArray(kategorie) ? kategorie.slice() : [kategorie];
+        var i = gewaehlt.indexOf(kat);
+        if (i >= 0) gewaehlt.splice(i, 1); else gewaehlt.push(kat);
+        gewaehlt = kats.filter(function (k) { return gewaehlt.indexOf(k) >= 0; });
+        kategorie = (gewaehlt.length === 0 || gewaehlt.length === kats.length) ? null
+                  : gewaehlt.length === 1 ? gewaehlt[0] : gewaehlt;
+        Eigene.merken("kategorie", kategorie);
         auswahlBauen(); kopfZeichnen(); weiterMachen();
       }));
     });
