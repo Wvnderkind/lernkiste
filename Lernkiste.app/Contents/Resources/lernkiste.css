@@ -120,8 +120,8 @@ button.danger{ border-color:var(--no); color:var(--no); }
 .hinweis-klein{ color:var(--text-dim); font-size:13px; }
 
 /* --- Eingaben --- */
-.eingabe-zeile{ display:flex; flex-wrap:wrap; gap:.7rem; align-items:flex-end; margin-bottom:1rem; }
-.eingabe-feld{ display:flex; flex-direction:column; gap:.25rem; }
+.eingabe-zeile{ display:flex; flex-wrap:wrap; gap:.7rem; align-items:flex-end; justify-content:center; margin-bottom:1rem; }
+.eingabe-feld{ display:flex; flex-direction:column; align-items:center; gap:.25rem; }
 .eingabe-feld label{ font-size:12px; color:var(--text-dim); }
 .eingabe-feld .einheit{ font-size:12px; color:var(--text-dim); margin-left:.3rem; }
 input[type=text], input[type=number]{
@@ -201,6 +201,15 @@ button.no-btn.chosen{ background:var(--no); color:var(--bg); }
 .esel    { border-left-color:var(--green); }
 .hotspot { border-left-color:var(--violet); }
 .box-title{ font-weight:700; margin-bottom:.35rem; }
+/* Zuklappbare Kaesten: der Motor setzt .klappbar, ein Klick auf den Titel .zu */
+.box.klappbar > .box-title{ cursor:pointer; user-select:none; -webkit-user-select:none; position:relative; padding-right:1.6rem; }
+.box.klappbar > .box-title::after{
+  content:"▾"; position:absolute; right:0; top:50%; transform:translateY(-50%);
+  color:var(--text-dim); transition:transform .15s;
+}
+.box.klappbar.zu > .box-title{ margin-bottom:0; }
+.box.klappbar.zu > .box-title::after{ transform:translateY(-50%) rotate(-90deg); }
+.box.klappbar.zu > .box-inhalt{ display:none; }
 /* Selbstpruefung des Motors: meldet Baufehler der Seite ganz oben. Die Liste
    darf markiert werden — wer sie abtippen oder kopieren will, soll das koennen. */
 .lk-baufehler{ border-left-color:var(--no); user-select:text; -webkit-user-select:text; }

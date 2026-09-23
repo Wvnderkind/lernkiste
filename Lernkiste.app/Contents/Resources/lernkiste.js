@@ -95,7 +95,7 @@ function $(id) { return document.getElementById(id); }
    Zustand
    ------------------------------------------------------------ */
 var K = null;            // Konfiguration der Seite
-var KEY = "", EKEY = "";
+var KEY = "", EKEY = "", KKEY = "";
 var alleItems = [];      // alles Abfragbare
 var aktiv = [];          // nach Filtern uebrig
 var schlange = [];       // Reihenfolge dieser Runde
@@ -405,6 +405,8 @@ function start(cfg) {
   K.version = K.version || 1;
   KEY  = "lern:" + K.id + "@v" + K.version;
   EKEY = "lern:" + K.id + "@v1-einstellungen";
+  // Klappzustand der Hinweiskaesten: bewusst ohne "lern:", gehoert nicht zum Fortschritt.
+  KKEY = "lernkiste-klapp:" + K.id;
 
   alleItems = itemsEinsammeln(K);
 
@@ -507,7 +509,41 @@ function geruestBauen() {
     h.innerHTML = '<div class="box-title">★ Heute</div>' + plan.hinweis;
     h.style.display = "";
   }
+  klappbarMachen();
   enterEinhaengen();
+}
+
+/* Jeder Hinweiskasten mit .box-title laesst sich ueber den Titel zuklappen.
+   Zugeklappte bleiben zu, auch nach einem Neustart — je Seite, nach Kastentitel.
+   <details>-Kaesten (z. B. Spickzettel) bleiben, wie die Seite sie gebaut hat. */
+function klappbarMachen() {
+  var zu;
+  try { zu = JSON.parse(localStorage.getItem(KKEY) || "null") || {}; } catch (e) { zu = {}; }
+  var kaesten = [$("lkHinweis")].concat(
+    Array.prototype.slice.call($("lkZusatz").querySelectorAll("div.box")));
+  kaesten.forEach(function (box) {
+    var titel = null;
+    for (var k = box.firstElementChild; k; k = k.nextElementSibling) {
+      if (k.classList.contains("box-title")) { titel = k; break; }
+    }
+    if (!titel || box.classList.contains("klappbar")) return;
+    // Alles ausser dem Titel in eine Huelle, damit auch lose Textstuecke mit zuklappen.
+    var inhalt = document.createElement("div");
+    inhalt.className = "box-inhalt";
+    Array.prototype.slice.call(box.childNodes).forEach(function (n) {
+      if (n !== titel) inhalt.appendChild(n);
+    });
+    box.appendChild(inhalt);
+    var name = titel.textContent.trim();
+    box.classList.add("klappbar");
+    if (zu[name]) box.classList.add("zu");
+    titel.title = "Klicken zum Ein- oder Ausklappen";
+    titel.addEventListener("click", function () {
+      var jetztZu = box.classList.toggle("zu");
+      if (jetztZu) zu[name] = true; else delete zu[name];
+      try { localStorage.setItem(KKEY, JSON.stringify(zu)); } catch (e) {}
+    });
+  });
 }
 
 /* ------------------------------------------------------------

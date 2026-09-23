@@ -398,6 +398,9 @@ Kapitel 5. Die Seite muss davon **nichts** selbst bauen.
 
 Alles, was die Seite sonst noch in `<body>` schreibt (Merkkästen `.box.merksatz`,
 `.falle`, `.esel`, `.klinik`), rutscht automatisch unter die Übung.
+Jeder Kasten mit einem `.box-title` als Kind lässt sich über den Titel zuklappen;
+der Motor merkt sich zugeklappte Kästen je Seite (nach Titeltext), auch den
+„★ Heute"-Kasten. `<details>`-Kästen (z. B. ein Spickzettel) bleiben unverändert.
 
 ### Selbstprüfung
 
