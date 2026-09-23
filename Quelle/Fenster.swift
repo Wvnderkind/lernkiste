@@ -139,7 +139,8 @@ final class SeitenHintergrund: NSView {
 // MARK: - Hauptfenster
 
 final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewDelegate,
-                     WKNavigationDelegate, WKScriptMessageHandler, NSSearchFieldDelegate {
+                     WKNavigationDelegate, WKScriptMessageHandler, NSSearchFieldDelegate,
+                     NSMenuDelegate {
 
     private var faecher: [Fach] = []
     private var staende: [String: SeitenStand] = [:]
@@ -238,6 +239,10 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         // Lernseiten lassen sich direkt in die Leiste ziehen.
         liste.registerForDraggedTypes([.fileURL])
         liste.setDraggingSourceOperationMask(.copy, forLocal: false)
+        // Rechtsklick: Seite, Thema oder Fach weitergeben.
+        let kontext = NSMenu()
+        kontext.delegate = self
+        liste.menu = kontext
         liste.doubleAction = #selector(zeileGeklickt)
         liste.target = self
         liste.action = #selector(zeileGeklickt)
@@ -1017,12 +1022,81 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         return zelle
     }
 
+    // MARK: Rechtsklick in der Leiste
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let zeile = liste.clickedRow
+        guard zeile >= 0, let knoten = liste.item(atRow: zeile) as? Knoten,
+              !knoten.istGruppe else { return }
+        let titel: String
+        switch knoten.art {
+        case .seite:  titel = "Seite teilen …"
+        case .thema:  titel = "Thema „\(knoten.name)“ teilen …"
+        case .fach:   titel = "Fach „\(knoten.name)“ teilen …"
+        case .bereich: return
+        }
+        let teilen = NSMenuItem(title: titel, action: #selector(knotenTeilen(_:)), keyEquivalent: "")
+        teilen.target = self
+        teilen.representedObject = knoten
+        teilen.image = NSImage(systemSymbolName: "square.and.arrow.up", accessibilityDescription: nil)
+        menu.addItem(teilen)
+        let finder = NSMenuItem(title: "Im Finder zeigen", action: #selector(knotenImFinder(_:)),
+                                keyEquivalent: "")
+        finder.target = self
+        finder.representedObject = knoten
+        menu.addItem(finder)
+    }
+
+    /// Alle Seiten unter einem Knoten — beim Fach auch die Themen darunter.
+    private func seitenUnter(_ knoten: Knoten) -> [Seite] {
+        if let seite = knoten.seite { return [seite] }
+        return knoten.kinder.flatMap(seitenUnter)
+    }
+
+    @objc private func knotenTeilen(_ eintrag: NSMenuItem) {
+        guard let knoten = eintrag.representedObject as? Knoten else { return }
+        let zeile = liste.row(forItem: knoten)
+        let rechteck = zeile >= 0 ? liste.rect(ofRow: zeile) : liste.visibleRect
+        var name = knoten.name
+        if knoten.art == .thema, let fach = seitenUnter(knoten).first?.fach { name = "\(fach) – \(name)" }
+        Export.teilen(seitenUnter(knoten), name: name, von: liste, bei: rechteck)
+    }
+
+    @objc private func knotenImFinder(_ eintrag: NSMenuItem) {
+        guard let knoten = eintrag.representedObject as? Knoten else { return }
+        let seiten = seitenUnter(knoten)
+        if knoten.art == .seite {
+            NSWorkspace.shared.activateFileViewerSelecting(seiten.map(\.datei))
+        } else if let erste = seiten.first {
+            // Thema: dessen Ordner; Fach: eine Ebene hoeher.
+            var ordner = erste.datei.deletingLastPathComponent()
+            if knoten.art == .fach { ordner = ordner.deletingLastPathComponent() }
+            NSWorkspace.shared.activateFileViewerSelecting([ordner])
+        }
+    }
+
+    /// Ablage → Seite teilen (Cmd-E): die gerade offene Seite.
+    func offeneSeiteTeilen() {
+        guard let seite = aktuelleSeite else {
+            let hinweis = NSAlert()
+            hinweis.messageText = "Öffne zuerst eine Seite."
+            hinweis.informativeText = "Ganze Themen und Fächer teilst du mit einem Rechtsklick in der Seitenleiste."
+            hinweis.addButton(withTitle: "OK")
+            hinweis.runModal()
+            return
+        }
+        Export.teilen([seite], name: seite.titel, von: titelLabel, bei: titelLabel.bounds)
+    }
+
     // MARK: Hineinziehen in die Leiste
 
     private func gezogeneSeiten(_ info: NSDraggingInfo) -> [URL] {
         let urls = info.draggingPasteboard.readObjects(
             forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
-        return urls.filter { ["html", "htm"].contains($0.pathExtension.lowercased()) }
+        return urls.filter {
+            ["html", "htm", "zip"].contains($0.pathExtension.lowercased()) || $0.hasDirectoryPath
+        }
     }
 
     func outlineView(_ o: NSOutlineView, validateDrop info: NSDraggingInfo,

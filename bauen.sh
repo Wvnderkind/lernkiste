@@ -13,7 +13,7 @@ mkdir -p "$ZIEL/MacOS" "$ZIEL/Resources"
 echo "→ Swift übersetzen"
 swiftc -O -o "$ZIEL/MacOS/Lernkiste" \
   Quelle/Modell.swift Quelle/Server.swift Quelle/Fortschritt.swift \
-  Quelle/Startseite.swift Quelle/Fenster.swift Quelle/Import.swift Quelle/Updater.swift \
+  Quelle/Startseite.swift Quelle/Fenster.swift Quelle/Import.swift Quelle/Export.swift Quelle/Updater.swift \
   Quelle/main.swift
 
 echo "→ Ressourcen kopieren"

@@ -436,6 +436,15 @@ wiedergefunden. Gibt es die `id` schon, fragt die App und verschiebt die alte
 Fassung nach `~/Documents/Lernkiste/_archiv/<Zeitstempel>-import/` — gelöscht wird
 nie. Seiten ohne Kennung: die App fragt nach Fach und Thema.
 
+**Teilen.** Rechtsklick in der Seitenleiste auf eine Seite, ein Thema oder ein Fach
+→ „… teilen …" öffnet das Teilen-Menü von macOS (AirDrop, Nachrichten, Mail …);
+„Ablage → Seite teilen …" (⌘E) teilt die offene Seite. Eine Seite geht als
+`.html`-Datei hinaus, mehrere als ZIP-Paket `<Name> (Lernkiste)/<Fach>/<Thema>/<datei>.html`
+(eigener ZIP-Schreiber, Namen als UTF-8 gekennzeichnet, damit Umlaute auch unter
+Windows stimmen). Der Lernstand geht nie mit. Der Import nimmt solche Pakete und
+ganze Ordner an; Seiten ohne Kennung landen dabei im Fach und Thema aus den
+Ordnern darüber, statt nachzufragen.
+
 **Bauanleitung für andere KIs.** „Ablage → Bauanleitung für eine KI kopieren"
 legt `Ressourcen/ki-vorlage.md` in die Zwischenablage: eine eigenständige,
 neutrale Kurzfassung dieses Vertrags mit Beispielseite. Wer den Vertrag ändert,

@@ -102,6 +102,14 @@ Andere Wege, eine fertige Seite hineinzubekommen:
 Gibt es schon eine Seite mit derselben Kennung, fragt die App nach; die alte Fassung
 wird nicht gelöscht, sondern unter `~/Documents/Lernkiste/_archiv/` aufgehoben.
 
+**Seiten an andere weitergeben:** In der linken Leiste mit der rechten Maustaste auf
+eine Seite, ein Thema oder ein ganzes Fach klicken → **… teilen …**. Es öffnet sich
+das Teilen-Menü von macOS (AirDrop, Nachrichten, Mail …). Die offene Seite geht auch
+über **Ablage → Seite teilen …** (⌘E). Eine einzelne Seite kommt als `.html`-Datei an,
+ein Thema oder Fach als ZIP-Paket. Der Empfänger zieht die Datei einfach in seine
+Lernkiste-Leiste oder wählt **Ablage → Seite importieren …**. Die Seiten landen dann
+von selbst im richtigen Fach und Thema. Dein Lernstand geht dabei nicht mit.
+
 **Roter Kasten oben auf einer Seite?** Dann hat die Seite Baufehler. Auf
 **Liste kopieren** drücken, die Liste der KI geben und um eine korrigierte Fassung
 bitten, danach wieder einfügen.
@@ -183,7 +191,9 @@ Für Windows 10 und 11 gibt es eine eigene Fassung mit Installer.
 Alles andere funktioniert wie auf dem Mac — mit **Strg** statt ⌘ und dem Menü
 **Datei** statt **Ablage**: Seiten importieren (Strg+O), in die Leiste ziehen, aus der
 Zwischenablage einfügen (Strg+Umschalt+V), eine `.html`-Datei per Rechtsklick →
-**Öffnen mit → Lernkiste** hineinholen.
+**Öffnen mit → Lernkiste** hineinholen. ZIP-Pakete, die jemand am Mac mit **Teilen**
+verschickt hat, lassen sich genauso importieren oder in die Leiste ziehen (das
+Teilen selbst gibt es unter Windows noch nicht).
 
 **Updates kommen von selbst.** Gibt es eine neue Fassung, erscheint oben rechts der
 Knopf **Update verfügbar**. Ein Klick, **Jetzt aktualisieren** — die Lernkiste lädt

@@ -24,6 +24,7 @@ tiny_http = "0.12"
 chrono = "0.4"
 regex = "1"
 percent-encoding = "2"
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [profile.release]
 codegen-units = 1

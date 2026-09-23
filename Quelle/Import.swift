@@ -13,24 +13,95 @@ enum Import {
         let panel = NSOpenPanel()
         panel.title = "Lernseite importieren"
         panel.prompt = "Importieren"
-        panel.allowedContentTypes = [.html]
+        panel.allowedContentTypes = [.html, .zip]
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         guard panel.runModal() == .OK else { return }
         dateien(panel.urls, fenster)
     }
 
+    /// Einzelne Seiten, ZIP-Pakete (aus „Teilen“) und ganze Ordner.
     static func dateien(_ urls: [URL], _ fenster: Fenster?) {
         var zuletzt: String?
-        for url in urls where ["html", "htm"].contains(url.pathExtension.lowercased()) {
-            guard let daten = try? Data(contentsOf: url) else {
-                melden("„\(url.lastPathComponent)“ ließ sich nicht lesen.")
-                continue
+        var gesamt = 0, uebernommen = 0
+        for url in urls {
+            for fund in seitenFinden(url) {
+                gesamt += 1
+                guard let daten = try? Data(contentsOf: fund.datei) else {
+                    melden("„\(fund.datei.lastPathComponent)“ ließ sich nicht lesen.")
+                    continue
+                }
+                let name = fund.datei.deletingPathExtension().lastPathComponent
+                if let id = aufnehmen(text(daten), dateiname: name, vorgabe: fund.ort) {
+                    zuletzt = id
+                    uebernommen += 1
+                }
             }
-            let name = url.deletingPathExtension().lastPathComponent
-            if let id = aufnehmen(text(daten), dateiname: name) { zuletzt = id }
+        }
+        try? FileManager.default.removeItem(at: entpackOrt)
+        if gesamt == 0 && !urls.isEmpty {
+            melden("Darin steckt keine Lernseite.",
+                   "Importieren lassen sich .html-Seiten und ZIP-Pakete, die mit „Teilen“ entstanden sind.")
+        } else if gesamt > 1 {
+            hinweisPaket(uebernommen, von: gesamt)
         }
         abschliessen(zuletzt, fenster)
+    }
+
+    /// Arbeitsordner fuers Entpacken; wird nach jedem Import geleert.
+    private static let entpackOrt = FileManager.default.temporaryDirectory
+        .appendingPathComponent("Lernkiste-Import")
+
+    /// Alle Lernseiten hinter einer URL. Liegt eine Seite in Paket/Fach/Thema/,
+    /// gilt das als Vorschlag fuer den Ort — falls sie selbst keine Kennung traegt.
+    private static func seitenFinden(_ url: URL) -> [(datei: URL, ort: (fach: String, thema: String)?)] {
+        let endung = url.pathExtension.lowercased()
+        if ["html", "htm"].contains(endung) { return [(url, nil)] }
+        var wurzel = url
+        if endung == "zip" {
+            let ziel = entpackOrt.appendingPathComponent(UUID().uuidString)
+            try? FileManager.default.createDirectory(at: ziel, withIntermediateDirectories: true)
+            let entpacker = Process()
+            entpacker.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+            entpacker.arguments = ["-x", "-k", url.path, ziel.path]
+            do { try entpacker.run() } catch { return [] }
+            entpacker.waitUntilExit()
+            guard entpacker.terminationStatus == 0 else {
+                melden("„\(url.lastPathComponent)“ ließ sich nicht entpacken.")
+                return []
+            }
+            wurzel = ziel
+        }
+        var istOrdner: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: wurzel.path, isDirectory: &istOrdner),
+              istOrdner.boolValue,
+              let alle = FileManager.default.enumerator(at: wurzel, includingPropertiesForKeys: nil,
+                                                        options: [.skipsHiddenFiles])
+        else { return [] }
+        var funde: [(URL, (fach: String, thema: String)?)] = []
+        let basis = wurzel.resolvingSymlinksInPath().pathComponents.count
+        for case let datei as URL in alle {
+            let teile = datei.resolvingSymlinksInPath().pathComponents
+            // Motor, Archiv und Mac-Beiwerk gehoeren nicht dazu.
+            if teile.dropFirst(basis).contains(where: { $0.hasPrefix("_") }) { continue }
+            guard ["html", "htm"].contains(datei.pathExtension.lowercased()) else { continue }
+            let tiefe = teile.count - basis          // 1 = liegt direkt im Paket
+            let ort = tiefe >= 3 ? (fach: ordnerSicher(teile[teile.count - 3]),
+                                    thema: ordnerSicher(teile[teile.count - 2])) : nil
+            funde.append((datei, ort))
+        }
+        return funde.sorted { $0.0.path < $1.0.path }
+    }
+
+    private static func hinweisPaket(_ n: Int, von gesamt: Int) {
+        let hinweis = NSAlert()
+        hinweis.messageText = n == gesamt
+            ? "\(n) Seiten übernommen"
+            : "\(n) von \(gesamt) Seiten übernommen"
+        hinweis.informativeText = "Sie stehen jetzt in der Seitenleiste. "
+            + "Seiten, die du schon hattest, blieben unverändert oder liegen in der alten Fassung im Archiv."
+        hinweis.addButton(withTitle: "Gut")
+        hinweis.runModal()
     }
 
     static func ausZwischenablage(_ fenster: Fenster?) {
@@ -42,7 +113,7 @@ enum Import {
                    + "von <!DOCTYPE html> bis </html>.")
             return
         }
-        abschliessen(aufnehmen(html, dateiname: nil), fenster)
+        abschliessen(aufnehmen(html, dateiname: nil, vorgabe: nil), fenster)
     }
 
     static func bauanleitungKopieren() {
@@ -67,7 +138,8 @@ enum Import {
     // MARK: Kern
 
     /// Legt die Seite ab und liefert ihre id — oder nil, wenn abgebrochen wurde.
-    private static func aufnehmen(_ html: String, dateiname: String?) -> String? {
+    private static func aufnehmen(_ html: String, dateiname: String?,
+                                  vorgabe: (fach: String, thema: String)?) -> String? {
         guard siehtAusWieHTML(html) else {
             melden("Das ist keine HTML-Seite.")
             return nil
@@ -87,8 +159,10 @@ enum Import {
                 .appendingPathComponent(thema)
                 .appendingPathComponent(teile.slug + ".html")
         } else {
-            // Keine Kennung in der Seite: dann fragen, wohin sie gehoert.
-            guard let ort = ortErfragen(faecher, titel: titel) else { return nil }
+            // Keine Kennung in der Seite: der Ordner im Paket sagt, wohin sie
+            // gehoert — sonst fragen.
+            let vorschlag = vorgabe.flatMap { $0.fach.isEmpty || $0.thema.isEmpty ? nil : $0 }
+            guard let ort = vorschlag ?? ortErfragen(faecher, titel: titel) else { return nil }
             let slug = sauber(Bibliothek.entschaerft(dateiname ?? titel ?? "lernseite"))
             ziel = Orte.seiten.appendingPathComponent(ort.fach)
                 .appendingPathComponent(ort.thema)

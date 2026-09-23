@@ -34,7 +34,7 @@ pub fn dateien_waehlen(app: &AppHandle) {
             .dialog()
             .file()
             .set_title("Lernseite importieren")
-            .add_filter("Lernseite", &["html", "htm"]);
+            .add_filter("Lernseite oder Paket", &["html", "htm", "zip"]);
         if let Some(f) = app.get_webview_window("haupt") {
             frage = frage.set_parent(&f);
         }
@@ -49,30 +49,154 @@ pub fn dateien(app: &AppHandle, pfade: Vec<PathBuf>) {
     std::thread::spawn(move || dateien_jetzt(&app, pfade));
 }
 
+/// Eine gefundene Seite: Name, Inhalt und — liegt sie in Paket/Fach/Thema/ —
+/// der Ort als Vorschlag fuer Seiten ohne Kennung.
+struct Fund {
+    name: String,
+    daten: Vec<u8>,
+    ort: Option<(String, String)>,
+}
+
+/// Einzelne Seiten, ZIP-Pakete (aus „Teilen" auf dem Mac) und ganze Ordner.
 fn dateien_jetzt(app: &AppHandle, pfade: Vec<PathBuf>) {
     let _sperre = SPERRE.lock().unwrap_or_else(|e| e.into_inner());
     let mut zuletzt = None;
+    let (mut gesamt, mut uebernommen) = (0, 0);
+    let leer = pfade.is_empty();
     for pfad in pfade {
-        if !matches!(bibliothek::endung(&pfad).as_str(), "html" | "htm") {
-            continue;
-        }
-        let name = pfad
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        let Ok(daten) = fs::read(&pfad) else {
-            melden(app, &format!("„{name}“ ließ sich nicht lesen."), "");
-            continue;
-        };
-        let stamm = pfad
-            .file_stem()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        if let Some(id) = aufnehmen(app, &String::from_utf8_lossy(&daten), Some(&stamm)) {
-            zuletzt = Some(id);
+        for fund in seiten_finden(app, &pfad) {
+            gesamt += 1;
+            let stamm = Path::new(&fund.name)
+                .file_stem()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let html = String::from_utf8_lossy(&fund.daten);
+            if let Some(id) = aufnehmen(app, &html, Some(&stamm), fund.ort) {
+                zuletzt = Some(id);
+                uebernommen += 1;
+            }
         }
     }
+    if gesamt == 0 && !leer {
+        melden(
+            app,
+            "Darin steckt keine Lernseite.",
+            "Importieren lassen sich .html-Seiten und ZIP-Pakete, die mit „Teilen\" entstanden sind.",
+        );
+    } else if gesamt > 1 {
+        let kopf = if uebernommen == gesamt {
+            format!("{uebernommen} Seiten übernommen")
+        } else {
+            format!("{uebernommen} von {gesamt} Seiten übernommen")
+        };
+        melden(
+            app,
+            &kopf,
+            "Sie stehen jetzt in der Seitenleiste. Seiten, die du schon hattest, blieben \
+             unverändert oder liegen in der alten Fassung im Archiv.",
+        );
+    }
     abschliessen(app, zuletzt);
+}
+
+fn ist_seite(name: &str) -> bool {
+    matches!(bibliothek::endung(Path::new(name)).as_str(), "html" | "htm")
+}
+
+/// Ort aus den Ordnern ueber der Seite: …/Fach/Thema/seite.html.
+/// `teile` sind die Pfadteile unterhalb der Wurzel, die Datei zuletzt.
+fn ort_aus(teile: &[String]) -> Option<(String, String)> {
+    if teile.len() < 3 {
+        return None;
+    }
+    let fach = ordner_sicher(&teile[teile.len() - 3]);
+    let thema = ordner_sicher(&teile[teile.len() - 2]);
+    (!fach.is_empty() && !thema.is_empty()).then_some((fach, thema))
+}
+
+/// Motor, Archiv und Mac-Beiwerk (__MACOSX, ._datei) gehoeren nicht dazu.
+fn uebergehen(teile: &[String]) -> bool {
+    teile.iter().any(|t| t.starts_with('_') || t.starts_with('.'))
+}
+
+fn seiten_finden(app: &AppHandle, pfad: &Path) -> Vec<Fund> {
+    let name = pfad
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    if pfad.is_dir() {
+        let mut funde = Vec::new();
+        ordner_durchsuchen(pfad, &mut Vec::new(), &mut funde);
+        funde.sort_by(|a, b| a.name.cmp(&b.name));
+        return funde;
+    }
+    let endung = bibliothek::endung(pfad);
+    if endung == "zip" {
+        return match zip_lesen(pfad) {
+            Ok(funde) => funde,
+            Err(e) => {
+                melden(app, &format!("„{name}“ ließ sich nicht entpacken."), &e);
+                Vec::new()
+            }
+        };
+    }
+    if !ist_seite(&name) {
+        return Vec::new();
+    }
+    match fs::read(pfad) {
+        Ok(daten) => vec![Fund { name, daten, ort: None }],
+        Err(_) => {
+            melden(app, &format!("„{name}“ ließ sich nicht lesen."), "");
+            Vec::new()
+        }
+    }
+}
+
+fn ordner_durchsuchen(ordner: &Path, weg: &mut Vec<String>, funde: &mut Vec<Fund>) {
+    let Ok(eintraege) = fs::read_dir(ordner) else { return };
+    for e in eintraege.flatten() {
+        let name = e.file_name().to_string_lossy().into_owned();
+        weg.push(name.clone());
+        let p = e.path();
+        if !uebergehen(weg) {
+            if p.is_dir() {
+                ordner_durchsuchen(&p, weg, funde);
+            } else if ist_seite(&name) {
+                if let Ok(daten) = fs::read(&p) {
+                    funde.push(Fund { name: weg.join("/"), daten, ort: ort_aus(weg) });
+                }
+            }
+        }
+        weg.pop();
+    }
+}
+
+/// Liest die Seiten direkt aus dem Paket, ohne es auszupacken.
+fn zip_lesen(pfad: &Path) -> Result<Vec<Fund>, String> {
+    use std::io::Read;
+    let datei = fs::File::open(pfad).map_err(|e| e.to_string())?;
+    let mut paket = zip::ZipArchive::new(datei).map_err(|e| e.to_string())?;
+    let mut funde = Vec::new();
+    for i in 0..paket.len() {
+        let mut eintrag = paket.by_index(i).map_err(|e| e.to_string())?;
+        // enclosed_name weist Pfade mit ".." oder absoluten Anfaengen ab.
+        let Some(sicher) = eintrag.enclosed_name() else { continue };
+        if eintrag.is_dir() {
+            continue;
+        }
+        let teile: Vec<String> = sicher
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned())
+            .collect();
+        if uebergehen(&teile) || !teile.last().is_some_and(|n| ist_seite(n)) {
+            continue;
+        }
+        let mut daten = Vec::new();
+        eintrag.read_to_end(&mut daten).map_err(|e| e.to_string())?;
+        funde.push(Fund { name: teile.join("/"), daten, ort: ort_aus(&teile) });
+    }
+    funde.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(funde)
 }
 
 pub fn aus_zwischenablage(app: &AppHandle) {
@@ -89,7 +213,7 @@ pub fn aus_zwischenablage(app: &AppHandle) {
             );
             return;
         };
-        let id = aufnehmen(&app, &html, None);
+        let id = aufnehmen(&app, &html, None, None);
         abschliessen(&app, id);
     });
 }
@@ -118,7 +242,12 @@ pub fn bauanleitung_kopieren(app: &AppHandle) {
 // MARK: - Kern
 
 /// Legt die Seite ab und liefert ihre id — oder None, wenn abgebrochen wurde.
-fn aufnehmen(app: &AppHandle, html: &str, dateiname: Option<&str>) -> Option<String> {
+fn aufnehmen(
+    app: &AppHandle,
+    html: &str,
+    dateiname: Option<&str>,
+    vorgabe: Option<(String, String)>,
+) -> Option<String> {
     if !sieht_aus_wie_html(html) {
         melden(app, "Das ist keine HTML-Seite.", "");
         return None;
@@ -142,8 +271,12 @@ fn aufnehmen(app: &AppHandle, html: &str, dateiname: Option<&str>) -> Option<Str
         let thema = ordner_name(&thema, &seiten.join(&fach));
         seiten.join(fach).join(thema).join(format!("{slug}.html"))
     } else {
-        // Keine Kennung in der Seite: dann fragen, wohin sie gehoert.
-        let (fach, thema) = ort_erfragen(app, &faecher, titel.as_deref())?;
+        // Keine Kennung in der Seite: der Ordner im Paket sagt, wohin sie
+        // gehoert — sonst fragen.
+        let (fach, thema) = match vorgabe {
+            Some(ort) => ort,
+            None => ort_erfragen(app, &faecher, titel.as_deref())?,
+        };
         let grundlage = dateiname.or(titel.as_deref()).unwrap_or("lernseite");
         let mut slug = sauber(&entschaerft(grundlage));
         if slug.is_empty() {
@@ -391,5 +524,18 @@ mod tests {
         assert_eq!(sauber("_-Hallo Welt!"), "hallowelt");
         assert_eq!(ordner_name("saeure-base", Path::new("/gibt/es/nicht")), "Saeure-Base");
         assert_eq!(ordner_sicher("  ._Bio:Chemie?  "), "Bio-Chemie-");
+    }
+
+    #[test]
+    fn ort_aus_paket() {
+        let t = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            ort_aus(&t(&["Paket (Lernkiste)", "ZNS", "Großhirn-Schnitte", "a.html"])),
+            Some(("ZNS".into(), "Großhirn-Schnitte".into()))
+        );
+        assert_eq!(ort_aus(&t(&["Paket", "a.html"])), None);
+        assert!(uebergehen(&t(&["__MACOSX", "ZNS", "x", "._a.html"])));
+        assert!(uebergehen(&t(&["Seiten", "_motor", "lernkiste.js"])));
+        assert!(!uebergehen(&t(&["Paket", "Chemie", "Redox", "a.html"])));
     }
 }

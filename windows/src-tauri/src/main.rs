@@ -118,7 +118,9 @@ fn main() {
             WindowEvent::DragDrop(DragDropEvent::Drop { paths, .. }) => {
                 let pfade: Vec<PathBuf> = paths
                     .iter()
-                    .filter(|p| matches!(bibliothek::endung(p).as_str(), "html" | "htm"))
+                    .filter(|p| {
+                        p.is_dir() || matches!(bibliothek::endung(p).as_str(), "html" | "htm" | "zip")
+                    })
                     .cloned()
                     .collect();
                 if !pfade.is_empty() {

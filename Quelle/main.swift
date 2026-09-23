@@ -57,6 +57,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func ausZwischenablage() { Import.ausZwischenablage(fenster) }
 
+    @objc func seiteTeilen() { fenster?.offeneSeiteTeilen() }
+
     @objc func bauanleitungKopieren() { Import.bauanleitungKopieren() }
 
     /// HTML-Datei aufs Dock-Symbol gezogen oder mit „Öffnen mit“ gewaehlt.
@@ -100,6 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         dateiMenu.addItem(.separator())
         for (titel, aktion, taste) in [
             ("Seite importieren …", #selector(seiteImportieren), "o"),
+            ("Seite teilen …", #selector(seiteTeilen), "e"),
             ("Seite aus Zwischenablage einfügen", #selector(ausZwischenablage), "V"),
             ("Bauanleitung für eine KI kopieren", #selector(bauanleitungKopieren), ""),
         ] as [(String, Selector, String)] {
