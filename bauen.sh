@@ -13,7 +13,7 @@ mkdir -p "$ZIEL/MacOS" "$ZIEL/Resources"
 echo "→ Swift übersetzen"
 swiftc -O -o "$ZIEL/MacOS/Lernkiste" \
   Quelle/Modell.swift Quelle/Server.swift Quelle/Fortschritt.swift \
-  Quelle/Startseite.swift Quelle/Fenster.swift Quelle/Import.swift Quelle/Export.swift Quelle/Updater.swift \
+  Quelle/Startseite.swift Quelle/Fenster.swift Quelle/Import.swift Quelle/Export.swift Quelle/Neuigkeiten.swift Quelle/Updater.swift \
   Quelle/main.swift
 
 echo "→ Ressourcen kopieren"
@@ -24,6 +24,9 @@ cp Ressourcen/tokens.css "$ZIEL/Resources/"
 cp Ressourcen/lernkiste.js Ressourcen/lernkiste.css "$ZIEL/Resources/"
 # Bauanleitung, die man einer beliebigen KI in den Chat gibt (Menue Ablage).
 cp Ressourcen/ki-vorlage.md "$ZIEL/Resources/"
+cp Ressourcen/neuigkeiten.json "$ZIEL/Resources/"
+# Die Beispielseite legt die App beim allerersten Start in den leeren Seiten-Ordner.
+cp Beispiel/Biochemie/Aminosaeuren/aminosaeuren-grundlagen.html "$ZIEL/Resources/"
 [ -f Ressourcen/Lernkiste.icns ] && cp Ressourcen/Lernkiste.icns "$ZIEL/Resources/"
 
 # Der Stand (Datum + Uhrzeit der Veroeffentlichung) steht in der Datei STAND.

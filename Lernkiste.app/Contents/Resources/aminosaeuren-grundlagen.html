@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="lernkiste-id"      content="biochemie/aminosaeuren/aminosaeuren-grundlagen">
+<meta name="lernkiste-titel"   content="Aminosäuren — Seitenketten und Codes">
+<meta name="lernkiste-typ"     content="drill">
+<meta name="lernkiste-version" content="1">
+<title>Aminosäuren — Seitenketten und Codes</title>
+<link rel="stylesheet" href="../../_motor/lernkiste.css">
+<script src="../../_motor/lernkiste.js"></script>
+</head>
+<body>
+
+<div class="box merksatz">
+  <div class="box-title">★ Grundgerüst</div>
+  Jede proteinogene Aminosäure hat dasselbe Gerüst: ein α-C-Atom mit Aminogruppe,
+  Carboxylgruppe, einem H-Atom und der <b>Seitenkette R</b>. Nur R unterscheidet die
+  20 Aminosäuren. Bei pH 7 liegt das Gerüst als <b>Zwitterion</b> vor
+  (–NH<sub>3</sub><sup>+</sup> und –COO<sup>−</sup>).
+</div>
+
+<div class="box falle">
+  <div class="box-title">⚠ Typische Fehler</div>
+  <b>Tyrosin</b> ist aromatisch <i>und</i> trägt eine polare OH-Gruppe.
+  <b>Histidin</b> zählt zu den basischen Aminosäuren, ist bei pH 7 aber überwiegend
+  ungeladen — sein pK<sub>S</sub> liegt bei etwa 6.
+</div>
+
+<div class="box esel">
+  <div class="box-title">🔑 Codes, die nicht dem Anfangsbuchstaben folgen</div>
+  <b>F</b> „Fenylalanin" · <b>W</b> Tryptophan (tWo rings) · <b>Y</b> tYrosin ·
+  <b>R</b> aRginin · <b>K</b> Lysin (K steht vor L) · <b>D</b>/<b>E</b> Aspartat/Glutamat
+  (D vor E, Aspartat ist kürzer) · <b>N</b> asparagiN · <b>Q</b> „Q-tamin" (Glutamin).
+</div>
+
+<div class="box klinik">
+  <div class="box-title">☤ Phenylketonurie</div>
+  Fehlt die Phenylalanin-Hydroxylase, kann Phenylalanin nicht zu Tyrosin umgebaut
+  werden. Phenylalanin häuft sich an und schädigt das Gehirn, Tyrosin wird zur
+  essenziellen Aminosäure. Deshalb gehört die PKU zum Neugeborenen-Screening.
+</div>
+
+<script>
+/* ============================================================
+   Beispielseite für die Lernkiste.
+   Sie zeigt alle fünf Übungsarten des Motors an einem Thema:
+   wahl (mit drei Abfragerichtungen über "varianten"), rechnung,
+   tabelle, svg — und die Merkkästen oben. Fortschritt, Tagespensum,
+   Wiederholung und Abschlussbildschirm liefert der Motor.
+   ============================================================ */
+
+var KLASSEN = ["unpolar", "aromatisch", "schwefelhaltig", "polar neutral", "sauer", "basisch"];
+
+/* Die 20 Aminosäuren. Jede ist EINE Aufgabe mit fester id; welche Frage
+   dazu gestellt wird, entscheidet die gewählte Variante (siehe unten). */
+var AS = [
+  ["ala", "Alanin",       "Ala", "A", "unpolar",        "Kleinste unpolare Seitenkette: eine Methylgruppe."],
+  ["gly", "Glycin",       "Gly", "G", "unpolar",        "Nur ein H als Rest — als einzige nicht chiral."],
+  ["val", "Valin",        "Val", "V", "unpolar",        "Verzweigtkettig, essenziell."],
+  ["leu", "Leucin",       "Leu", "L", "unpolar",        "Verzweigtkettig, essenziell."],
+  ["ile", "Isoleucin",    "Ile", "I", "unpolar",        "Verzweigtkettig, zwei Chiralitätszentren."],
+  ["pro", "Prolin",       "Pro", "P", "unpolar",        "Ring zurück zum N — knickt die Kette, „Helixbrecher“."],
+  ["phe", "Phenylalanin", "Phe", "F", "aromatisch",     "Benzolring, rein unpolar-aromatisch."],
+  ["trp", "Tryptophan",   "Trp", "W", "aromatisch",     "Indolring, die größte Aminosäure."],
+  ["tyr", "Tyrosin",      "Tyr", "Y", "aromatisch",     "Phenolring mit OH — aromatisch und dazu polar."],
+  ["met", "Methionin",    "Met", "M", "schwefelhaltig", "Thioether, Startaminosäure der Translation."],
+  ["cys", "Cystein",      "Cys", "C", "schwefelhaltig", "SH-Gruppe — bildet Disulfidbrücken."],
+  ["ser", "Serin",        "Ser", "S", "polar neutral",  "OH-Gruppe, Angriffspunkt für Phosphorylierung."],
+  ["thr", "Threonin",     "Thr", "T", "polar neutral",  "OH-Gruppe an einem zweiten Chiralitätszentrum."],
+  ["asn", "Asparagin",    "Asn", "N", "polar neutral",  "Säureamid — Ankerpunkt der N-Glykosylierung."],
+  ["gln", "Glutamin",     "Gln", "Q", "polar neutral",  "Säureamid, wichtigster Stickstoff-Transporter im Blut."],
+  ["asp", "Aspartat",     "Asp", "D", "sauer",          "Zweite COOH-Gruppe, bei pH 7 negativ geladen."],
+  ["glu", "Glutamat",     "Glu", "E", "sauer",          "Eine CH<sub>2</sub>-Gruppe länger als Aspartat."],
+  ["lys", "Lysin",        "Lys", "K", "basisch",        "Endständige NH<sub>2</sub>-Gruppe, bei pH 7 positiv."],
+  ["arg", "Arginin",      "Arg", "R", "basisch",        "Guanidinogruppe — die basischste Seitenkette."],
+  ["his", "Histidin",     "His", "H", "basisch",        "Imidazolring, pK<sub>S</sub> ≈ 6 — puffert im physiologischen Bereich."]
+].map(function (z) {
+  return { id: z[0], art: "wahl", kategorie: "Seitenketten und Codes",
+           name: z[1], c3: z[2], c1: z[3], klasse: z[4], merke: z[5] };
+});
+
+Lernseite.start({
+  id: "biochemie/aminosaeuren/aminosaeuren-grundlagen",
+  version: 1,
+  untertitel: "Die 20 proteinogenen Aminosäuren: Seitenketten-Klasse, Einbuchstabencode, isoelektrischer Punkt und das Grundgerüst.",
+  fussnote: "<p>pK<sub>S</sub>-Werte bei 25 °C nach gängigen Biochemie-Lehrbüchern; je nach Quelle weichen sie um wenige Hundertstel ab.</p>",
+  standard: { ziel: 20, variante: "mix" },
+
+  /* Drei Richtungen über dieselben 20 Aufgaben. Aufgaben ohne Code
+     (Rechnen, Tabelle, Bild) lässt jede Variante unverändert. */
+  varianten: [
+    { id: "klasse", label: "Seitenkette → Klasse", bauen: function (it) {
+        if (!it.c1) return null;
+        return { frage: "Zu welcher Gruppe gehört die Seitenkette von <b>" + it.name + "</b>?",
+                 loesung: it.klasse, optionen: KLASSEN };
+      } },
+    { id: "code", label: "Name → Code", bauen: function (it) {
+        if (!it.c1) return null;
+        return { frage: "Einbuchstabencode von <b>" + it.name + "</b> (" + it.c3 + ")?",
+                 loesung: it.c1, ablenkerAus: "c1" };
+      } },
+    { id: "name", label: "Code → Name", bauen: function (it) {
+        if (!it.c1) return null;
+        return { frage: "Welche Aminosäure hat den Einbuchstabencode <b>" + it.c1 + "</b>?",
+                 loesung: it.name, ablenkerAus: "name" };
+      } }
+  ],
+
+  schemata: {
+    geruest:
+      '<svg viewBox="0 0 440 260" width="440" height="260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grundgerüst einer Aminosäure als Zwitterion">'
+    + '<g stroke="var(--text-dim)" stroke-width="2.5">'
+    +   '<line x1="220" y1="106" x2="220" y2="60"/><line x1="220" y1="154" x2="220" y2="198"/>'
+    +   '<line x1="196" y1="130" x2="142" y2="130"/><line x1="244" y1="130" x2="298" y2="130"/>'
+    + '</g>'
+    + '<rect data-teil="seitenkette" x="170" y="16" width="100" height="44" rx="10" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"/>'
+    + '<rect data-teil="wasserstoff" x="190" y="198" width="60" height="44" rx="10" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"/>'
+    + '<rect data-teil="amino" x="32" y="108" width="110" height="44" rx="10" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"/>'
+    + '<rect data-teil="carboxyl" x="298" y="108" width="110" height="44" rx="10" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"/>'
+    + '<circle data-teil="alpha" cx="220" cy="130" r="24" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"/>'
+    + '<g fill="var(--text)" font-size="20" font-weight="600" text-anchor="middle" pointer-events="none">'
+    +   '<text x="220" y="45">R</text><text x="220" y="227">H</text>'
+    +   '<text x="87" y="137">H₃N⁺</text><text x="353" y="137">COO⁻</text>'
+    +   '<text x="220" y="137">C<tspan font-size="14" dy="4">α</tspan></text>'
+    + '</g></svg>'
+  },
+
+  tabellen: {
+    profil: { kopfspalte: "Aminosäure",
+              spalten: ["Ladung der Seitenkette bei pH 7", "Zahl der Chiralitätszentren"] }
+  },
+
+  aufgaben: AS.concat([
+
+    /* ---------- Grundgerüst (Klick ins Bild) ---------- */
+    { id: "geruest-alpha", art: "svg", kategorie: "Grundgerüst", schema: "geruest", teil: "alpha",
+      ziel: "das α-C-Atom",
+      merke: "Vier verschiedene Substituenten machen das α-C chiral. Proteinogene Aminosäuren sind L-konfiguriert; nur Glycin ist nicht chiral." },
+    { id: "geruest-amino", art: "svg", kategorie: "Grundgerüst", schema: "geruest", teil: "amino",
+      ziel: "die Aminogruppe",
+      merke: "pK<sub>S</sub> ≈ 9–10: bei pH 7 fast vollständig protoniert (–NH<sub>3</sub><sup>+</sup>)." },
+    { id: "geruest-carboxyl", art: "svg", kategorie: "Grundgerüst", schema: "geruest", teil: "carboxyl",
+      ziel: "die Carboxylatgruppe",
+      merke: "pK<sub>S</sub> ≈ 2: bei pH 7 deprotoniert (–COO<sup>−</sup>). Zusammen mit –NH<sub>3</sub><sup>+</sup> ergibt das das Zwitterion." },
+    { id: "geruest-rest", art: "svg", kategorie: "Grundgerüst", schema: "geruest", teil: "seitenkette",
+      ziel: "die Seitenkette — sie unterscheidet die 20 Aminosäuren",
+      merke: "Nach R teilt man ein: unpolar, aromatisch, schwefelhaltig, polar neutral, sauer, basisch." },
+    { id: "geruest-h", art: "svg", kategorie: "Grundgerüst", schema: "geruest", teil: "wasserstoff",
+      ziel: "das H-Atom am α-C",
+      merke: "Ist auch R ein H-Atom (Glycin), trägt das α-C zwei gleiche Substituenten und ist nicht chiral." },
+
+    /* ---------- Isoelektrischer Punkt (Rechnung) ---------- */
+    { id: "pi-ala", art: "rechnung", kategorie: "Isoelektrischer Punkt",
+      frage: "Alanin: pK<sub>S</sub>(α-COOH) = 2,34, pK<sub>S</sub>(α-NH<sub>3</sub><sup>+</sup>) = 9,69. Berechne den isoelektrischen Punkt.",
+      felder: [{ label: "pI", loesung: 6.02, toleranz: 0.02 }],
+      schritte: ["Ohne ionisierbare Seitenkette liegt der pI genau zwischen den beiden pK<sub>S</sub>-Werten.",
+                 "pI = (2,34 + 9,69) / 2 = <b>6,02</b>"],
+      merke: "Am pI ist die Nettoladung null — die Aminosäure wandert im elektrischen Feld nicht." },
+    { id: "pi-asp", art: "rechnung", kategorie: "Isoelektrischer Punkt",
+      frage: "Aspartat: pK<sub>S</sub>(α-COOH) = 1,88, pK<sub>S</sub>(Seitenkette) = 3,65, pK<sub>S</sub>(α-NH<sub>3</sub><sup>+</sup>) = 9,60. Berechne den pI.",
+      felder: [{ label: "pI", loesung: 2.77, toleranz: 0.02 }],
+      schritte: ["Bei saurer Seitenkette liegt die ungeladene Form zwischen der Abgabe des ersten und des zweiten Protons.",
+                 "Also die beiden sauren Gruppen mitteln: pI = (1,88 + 3,65) / 2 = <b>2,77</b>"],
+      merke: "Den pK<sub>S</sub> der Aminogruppe braucht man hier nicht — ein häufiger Fehler ist, einfach alle drei Werte zu mitteln." },
+    { id: "pi-lys", art: "rechnung", kategorie: "Isoelektrischer Punkt",
+      frage: "Lysin: pK<sub>S</sub>(α-COOH) = 2,18, pK<sub>S</sub>(α-NH<sub>3</sub><sup>+</sup>) = 8,95, pK<sub>S</sub>(Seitenkette) = 10,53. Berechne den pI.",
+      felder: [{ label: "pI", loesung: 9.74, toleranz: 0.02 }],
+      schritte: ["Bei basischer Seitenkette zählen die beiden Aminogruppen.",
+                 "pI = (8,95 + 10,53) / 2 = <b>9,74</b>"] },
+    { id: "his-anteil", art: "rechnung", kategorie: "Isoelektrischer Punkt",
+      frage: "Die Imidazol-Seitenkette von Histidin hat pK<sub>S</sub> = 6,0. Welcher Anteil liegt bei pH 7,0 protoniert vor?",
+      felder: [{ label: "protoniert", loesung: 9.1, einheit: "%", toleranz: 0.3 }],
+      schritte: ["Henderson-Hasselbalch: 7,0 = 6,0 + lg(c<sub>Base</sub> / c<sub>Säure</sub>) → Base : Säure = 10 : 1",
+                 "Protoniert ist 1 von 11 Teilen: 1 / 11 = <b>9,1 %</b>"],
+      merke: "Weil der pK<sub>S</sub> so nah am physiologischen pH liegt, puffert Histidin und dient in vielen Enzymen als Protonenüberträger." },
+
+    /* ---------- Ladung und Chiralität (Tabelle) ---------- */
+    { id: "tab-gly", art: "tabelle", kategorie: "Ladung und Chiralität", tabelle: "profil", kopf: "Glycin",
+      hinweis: "Ladung: positiv, negativ oder neutral.",
+      zellen: [{ loesung: "neutral", alternativen: ["ungeladen"] }, { loesung: "0", alternativen: ["null", "keins"] }] },
+    { id: "tab-thr", art: "tabelle", kategorie: "Ladung und Chiralität", tabelle: "profil", kopf: "Threonin",
+      hinweis: "Ladung: positiv, negativ oder neutral.",
+      zellen: [{ loesung: "neutral", alternativen: ["ungeladen"] }, { loesung: "2", alternativen: ["zwei"] }],
+      merke: "Threonin und Isoleucin haben neben dem α-C ein zweites Chiralitätszentrum in der Seitenkette." },
+    { id: "tab-ile", art: "tabelle", kategorie: "Ladung und Chiralität", tabelle: "profil", kopf: "Isoleucin",
+      hinweis: "Ladung: positiv, negativ oder neutral.",
+      zellen: [{ loesung: "neutral", alternativen: ["ungeladen"] }, { loesung: "2", alternativen: ["zwei"] }] },
+    { id: "tab-asp", art: "tabelle", kategorie: "Ladung und Chiralität", tabelle: "profil", kopf: "Aspartat",
+      hinweis: "Ladung: positiv, negativ oder neutral.",
+      zellen: [{ loesung: "negativ", alternativen: ["negativ geladen"] }, { loesung: "1", alternativen: ["eins", "eines"] }] },
+    { id: "tab-lys", art: "tabelle", kategorie: "Ladung und Chiralität", tabelle: "profil", kopf: "Lysin",
+      hinweis: "Ladung: positiv, negativ oder neutral.",
+      zellen: [{ loesung: "positiv", alternativen: ["positiv geladen"] }, { loesung: "1", alternativen: ["eins", "eines"] }] },
+    { id: "tab-arg", art: "tabelle", kategorie: "Ladung und Chiralität", tabelle: "profil", kopf: "Arginin",
+      hinweis: "Ladung: positiv, negativ oder neutral.",
+      zellen: [{ loesung: "positiv", alternativen: ["positiv geladen"] }, { loesung: "1", alternativen: ["eins", "eines"] }] }
+  ])
+});
+</script>
+</body>
+</html>

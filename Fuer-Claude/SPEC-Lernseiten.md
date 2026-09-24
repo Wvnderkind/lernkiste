@@ -445,6 +445,24 @@ Windows stimmen). Der Lernstand geht nie mit. Der Import nimmt solche Pakete und
 ganze Ordner an; Seiten ohne Kennung landen dabei im Fach und Thema aus den
 Ordnern darüber, statt nachzufragen.
 
+Unter Windows heißt es „Exportieren": Rechtsklick → „… exportieren …" bzw.
+„Datei → Seite exportieren …" (Strg+E) fragt nach dem Speicherort und legt dort die
+`.html`-Datei oder dasselbe ZIP-Paket ab.
+
+**Neuigkeiten.** `Ressourcen/neuigkeiten.json` (neuestes Update zuerst, je Eintrag
+`datum` + `punkte` in Alltagssprache) füllt das ⓘ oben rechts; solange der neueste
+Eintrag ungesehen ist, trägt es einen roten Punkt. Punkte mit „[mac] " oder
+„[win] " erscheinen nur in der jeweiligen Fassung. Jede Veröffentlichung bekommt
+einen Eintrag.
+
+**Selbst auffrischen.** Die App liest alle 30 Minuten, direkt nach Mitternacht und
+beim Zurückkehren ins Fenster die Seiten neu ein und zeichnet Leiste und Startseite
+nur neu, wenn sich etwas geändert hat. Seiten müssen dafür nichts tun.
+
+**Erste Schritte.** Solange nur die Beispielseite da ist, zeigt die Startseite
+einen Kasten mit Anleitung (ausprobieren, bauen lassen, hinzufügen, weitergeben);
+er verschwindet mit der ersten eigenen Seite oder per ×.
+
 **Bauanleitung für andere KIs.** „Ablage → Bauanleitung für eine KI kopieren"
 legt `Ressourcen/ki-vorlage.md` in die Zwischenablage: eine eigenständige,
 neutrale Kurzfassung dieses Vertrags mit Beispielseite. Wer den Vertrag ändert,

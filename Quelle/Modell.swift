@@ -42,6 +42,24 @@ enum Orte {
         motorSpiegeln()
     }
 
+    /// Kennung der Beispielseite — solange nur sie da ist, zeigt die
+    /// Startseite den Kasten „Erste Schritte“.
+    static let beispielID = "biochemie/aminosaeuren/aminosaeuren-grundlagen"
+
+    /// Beim allerersten Start ist Seiten/ leer: dann die Beispielseite einlegen,
+    /// damit man sofort etwas zum Ausprobieren hat. Liegt sie nicht im Programm
+    /// (eigener Bau), passiert nichts.
+    static func beispielEinlegen() {
+        let fm = FileManager.default
+        let inhalt = (try? fm.contentsOfDirectory(atPath: seiten.path)) ?? []
+        guard inhalt.allSatisfy({ $0.hasPrefix("_") || $0.hasPrefix(".") }),
+              let quelle = Bundle.main.url(forResource: "aminosaeuren-grundlagen", withExtension: "html")
+        else { return }
+        let ziel = seiten.appendingPathComponent("Biochemie/Aminosaeuren")
+        try? fm.createDirectory(at: ziel, withIntermediateDirectories: true)
+        try? fm.copyItem(at: quelle, to: ziel.appendingPathComponent("aminosaeuren-grundlagen.html"))
+    }
+
     /// Nur schreiben, wenn sich wirklich etwas geaendert hat: so bleibt das
     /// Aenderungsdatum stabil und ein laufender Browser-Cache wird nicht unnoetig
     /// entwertet. Das Programm ist die Quelle — eine Kopie hier wird ueberschrieben.

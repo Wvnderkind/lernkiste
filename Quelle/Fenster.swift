@@ -166,6 +166,13 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     private var unterLabel: NSTextField!
     private var sternKnopf: NSButton!
     private var updateKnopf: NSButton!
+    private var infoKnopf: NSButton!
+    private var infoPunkt: NSView!
+    private var auffrischUhr: Timer?
+    /// Was die Leiste und die Startseite zuletzt gezeigt haben — beim Auffrischen
+    /// wird nur neu gezeichnet, wenn sich daran etwas geaendert hat.
+    private var leistenAbdruck = ""
+    private var gezeigteStartseite: String?
     private var startKnopf: NSButton!
     private var startPille: NSView!
     private var seitenleisteHG: SeitenleistenHintergrund!
@@ -195,6 +202,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
 
     private func aufbauen() {
         Orte.vorbereiten()
+        Orte.beispielEinlegen()
         try? server.starten()
         server.startseiteHTML = { [weak self] in self?.startseiteBauen() ?? "" }
 
@@ -209,6 +217,17 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         uhr = Timer.scheduledTimer(withTimeInterval: 25, repeats: true) { [weak self] _ in
             self?.fortschrittSichern()
         }
+
+        // Von selbst auffrischen: neue Seiten, Gruß, Haken vom Vortag.
+        auffrischUhr = Timer.scheduledTimer(withTimeInterval: 30 * 60, repeats: true) { [weak self] _ in
+            self?.auffrischen()
+        }
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(auffrischen),
+            name: .NSCalendarDayChanged, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(auffrischen),
+            name: NSApplication.didBecomeActiveNotification, object: nil)
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(fensterSchliesst),
@@ -339,6 +358,26 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         themaKnopf.isBordered = false
         themaKnopf.toolTip = "Hell / Dunkel"
 
+        infoKnopf = NSButton(image: NSImage(systemSymbolName: "info.circle",
+                                            accessibilityDescription: "Neuigkeiten")!,
+                             target: self, action: #selector(neuigkeitenZeigen))
+        infoKnopf.isBordered = false
+        infoKnopf.toolTip = "Was ist neu?"
+        // Kleiner Punkt oben rechts am ⓘ, solange ein Update ungelesen ist.
+        infoPunkt = NSView()
+        infoPunkt.wantsLayer = true
+        infoPunkt.layer?.backgroundColor = NSColor.systemRed.cgColor
+        infoPunkt.layer?.cornerRadius = 3.5
+        infoPunkt.translatesAutoresizingMaskIntoConstraints = false
+        infoKnopf.addSubview(infoPunkt)
+        NSLayoutConstraint.activate([
+            infoPunkt.widthAnchor.constraint(equalToConstant: 7),
+            infoPunkt.heightAnchor.constraint(equalToConstant: 7),
+            infoPunkt.topAnchor.constraint(equalTo: infoKnopf.topAnchor, constant: -2),
+            infoPunkt.trailingAnchor.constraint(equalTo: infoKnopf.trailingAnchor, constant: 2),
+        ])
+        infoPunkt.isHidden = !Neuigkeiten.ungelesen
+
         // Nur sichtbar, wenn die öffentliche Fassung eine neuere auf GitHub findet.
         updateKnopf = NSButton(title: "Update verfügbar", target: Updater.shared,
                                action: #selector(Updater.installierenFragen))
@@ -348,7 +387,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         updateKnopf.toolTip = "Neue Fassung der Lernkiste installieren"
         updateKnopf.isHidden = true
 
-        let kopf = NSStackView(views: [texte, NSView(), updateKnopf, sternKnopf, themaKnopf])
+        let kopf = NSStackView(views: [texte, NSView(), updateKnopf, sternKnopf, infoKnopf, themaKnopf])
         kopf.orientation = .horizontal
         kopf.spacing = 10
         kopf.edgeInsets = NSEdgeInsets(top: 5, left: 8, bottom: 10, right: 14)
@@ -464,7 +503,56 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         faecher = Bibliothek.einlesen()
         staende = Fortschritt.alleStaende()
         plan = Tagesplan.laden()
+        leistenAbdruck = abdruck(faecher, staende)
         baumBauen()
+    }
+
+    /// Alles, was die Leiste zeigt: Seiten mit Titel und Ort, die Haken fuer
+    /// „heute geschafft“ — und das Datum, weil die Haken um Mitternacht fallen.
+    private func abdruck(_ faecher: [Fach], _ staende: [String: SeitenStand]) -> String {
+        let seiten = faecher.flatMap(\.alleSeiten)
+            .map { "\($0.id)|\($0.titel)|\($0.fach)|\($0.thema)|\(staende[$0.id]?.tagespensum?.erledigt == true)" }
+        return ([Datum.heute] + seiten).joined(separator: "\n")
+    }
+
+    /// Liest Seiten, Fortschritt und Tagesplan neu ein, ohne dass man ⌘R drücken
+    /// muss. Gezeichnet wird nur, was sich geaendert hat; eine offene Lernseite
+    /// bleibt unberuehrt, damit keine Eingabe verloren geht.
+    @objc private func auffrischen() {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.auffrischen() }
+            return
+        }
+        guard liste != nil, window?.attachedSheet == nil, NSApp.modalWindow == nil else { return }
+        faecher = Bibliothek.einlesen()
+        staende = Fortschritt.alleStaende()
+        plan = Tagesplan.laden()
+        let neu = abdruck(faecher, staende)
+        if neu != leistenAbdruck {
+            leistenAbdruck = neu
+            baumBauen()
+            liste.reloadData()
+            standardAufklappen()
+            auswahlAngleichen()
+        }
+        if aktuelleSeite == nil {
+            let html = startseiteBauen()
+            if html != gezeigteStartseite {
+                gezeigteStartseite = html
+                web.load(URLRequest(url: URL(string: "\(Server.basis)/start")!))
+            }
+        }
+    }
+
+    // MARK: Neuigkeiten (ⓘ)
+
+    @objc private func neuigkeitenZeigen() {
+        let fenster = NSPopover()
+        fenster.behavior = .transient
+        fenster.contentViewController = Neuigkeiten.ansicht()
+        fenster.show(relativeTo: infoKnopf.bounds, of: infoKnopf, preferredEdge: .minY)
+        Neuigkeiten.gelesen()
+        infoPunkt.isHidden = true
     }
 
     private func baumBauen() {
@@ -575,6 +663,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         unterLabel.stringValue = "Übersicht"
         sternKnopf.isHidden = true
         auswahlAngleichen()
+        gezeigteStartseite = startseiteBauen()
         web.load(URLRequest(url: URL(string: "\(Server.basis)/start")!))
     }
 
@@ -813,6 +902,10 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
             fortschrittSichern()
         case "oeffnen":
             if let id = inhalt["id"] as? String { seiteOeffnenPerID(id) }
+        case "anleitungWeg":
+            Zustand.aktuell.anleitungAusgeblendet = true
+            Zustand.aktuell.sichern()
+            if aktuelleSeite == nil { startseiteZeigen() }
         case "scroll":
             trennerZeigen(!((inhalt["oben"] as? Bool) ?? true))
         default:

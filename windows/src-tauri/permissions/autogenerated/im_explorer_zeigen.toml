@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-im-explorer-zeigen"
+description = "Enables the im_explorer_zeigen command without any pre-configured scope."
+commands.allow = ["im_explorer_zeigen"]
+
+[[permission]]
+identifier = "deny-im-explorer-zeigen"
+description = "Denies the im_explorer_zeigen command without any pre-configured scope."
+commands.deny = ["im_explorer_zeigen"]

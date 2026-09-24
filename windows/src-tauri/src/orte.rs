@@ -13,6 +13,11 @@ pub const TOKENS_CSS: &str = include_str!("../../../Ressourcen/tokens.css");
 pub const KI_VORLAGE: &str = include_str!("../../../Ressourcen/ki-vorlage.md");
 pub const BEISPIEL: &str =
     include_str!("../../../Beispiel/Biochemie/Aminosaeuren/aminosaeuren-grundlagen.html");
+/// Kennung der Beispielseite — solange nur sie da ist, zeigt die Startseite
+/// die Anleitung „Erste Schritte“.
+pub const BEISPIEL_ID: &str = "biochemie/aminosaeuren/aminosaeuren-grundlagen";
+/// Was mit den letzten Updates neu kam (gemeinsam mit dem Mac).
+pub const NEUIGKEITEN: &str = include_str!("../../../Ressourcen/neuigkeiten.json");
 /// Gemeinsame Fassungsnummer mit dem Mac, z. B. "202609231244".
 pub const STAND: &str = include_str!("../../../STAND");
 

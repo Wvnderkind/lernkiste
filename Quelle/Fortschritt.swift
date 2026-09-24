@@ -169,6 +169,8 @@ struct Zustand: Codable {
     var zuletzt: [String] = []          // Seiten-IDs, neueste zuerst
     var theme: String = "dark"
     var letzteSeite: String?
+    var neuigkeitGesehen: String?       // Kennung des zuletzt angesehenen Updates (ⓘ)
+    var anleitungAusgeblendet: Bool?    // Kasten „Erste Schritte“ per × weggeklickt
 
     static var aktuell: Zustand = laden()
 

@@ -208,6 +208,12 @@ pub struct Zustand {
     pub theme: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub letzte_seite: Option<String>,
+    /// Kennung des zuletzt angesehenen Updates (ⓘ oben rechts).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub neuigkeit_gesehen: Option<String>,
+    /// Der Kasten „Erste Schritte“ wurde per × weggeklickt.
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub anleitung_ausgeblendet: bool,
 }
 
 fn dunkel() -> String {
@@ -216,7 +222,14 @@ fn dunkel() -> String {
 
 impl Default for Zustand {
     fn default() -> Self {
-        Zustand { favoriten: vec![], zuletzt: vec![], theme: dunkel(), letzte_seite: None }
+        Zustand {
+            favoriten: vec![],
+            zuletzt: vec![],
+            theme: dunkel(),
+            letzte_seite: None,
+            neuigkeit_gesehen: None,
+            anleitung_ausgeblendet: false,
+        }
     }
 }
 

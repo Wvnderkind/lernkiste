@@ -1,0 +1,30 @@
+[
+  {
+    "datum": "2026-09-24",
+    "punkte": [
+      "Neu: dieses ⓘ-Symbol. Nach jedem Update steht hier, was sich geändert hat.",
+      "Die Lernkiste frischt sich selbst auf: alle 30 Minuten, direkt nach Mitternacht und wenn du ins Fenster zurückkommst. Neue Seiten erscheinen von allein, der Gruß wechselt und die grünen Haken vom Vortag verschwinden.",
+      "Nach der Installation erklärt die Startseite die ersten Schritte, bis deine erste eigene Seite da ist.",
+      "[mac] Die Beispielseite liegt nach der Installation schon bereit.",
+      "[win] Seiten, Themen und Fächer weitergeben: Rechtsklick in der Leiste → Exportieren … Die offene Seite geht auch mit Strg+E. Dein Lernstand bleibt dabei bei dir."
+    ]
+  },
+  {
+    "datum": "2026-09-23",
+    "punkte": [
+      "[mac] Lernseiten teilen: Rechtsklick in der Leiste auf eine Seite, ein Thema oder ein Fach → teilen (AirDrop, Nachrichten, Mail …). Die offene Seite geht auch mit ⌘E. Dein Lernstand bleibt dabei bei dir.",
+      "Pakete von anderen einfach in die Leiste ziehen: Die Seiten landen von selbst im richtigen Fach und Thema.",
+      "Antworten mit Tief- und Hochstellungen (H₂O, NAD⁺) stehen ohne Lücken im Knopf.",
+      "Mehrere Kategorien lassen sich gleichzeitig anwählen, zugeklappte Ordner und Hinweiskästen bleiben zu.",
+      "Heute falsch beantwortete Aufgaben müssen zweimal hintereinander sitzen, bevor der Tag geschafft ist.",
+      "Die Seite springt beim Üben nicht mehr nach unten.",
+      "Die Lernkiste sucht selbst nach Updates und installiert sie per Knopfdruck. Es gibt sie jetzt auch für Windows."
+    ]
+  },
+  {
+    "datum": "2026-09-22",
+    "punkte": [
+      "Alle Lernseiten nutzen einen gemeinsamen Übungs-Motor: Fortschritt, Tagespensum und Belohnungs-GIFs funktionieren überall gleich."
+    ]
+  }
+]

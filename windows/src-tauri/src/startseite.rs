@@ -3,7 +3,7 @@
 
 use crate::bibliothek::{alle_seiten, fach_ist_archiv, Fach, Konfiguration, Seite, Tagesplan};
 use crate::fortschritt::{SeitenStand, Zustand};
-use crate::orte::orte;
+use crate::orte::{orte, BEISPIEL_ID};
 use crate::zeit;
 use std::collections::HashMap;
 
@@ -48,6 +48,19 @@ h2:first-of-type{margin-top:0}
 .balken i.geschafft{background:var(--ok)}
 .leer{color:var(--text-dim);font-size:13px;background:var(--surface);
       border:1px dashed var(--line);border-radius:10px;padding:16px}
+.anleitung{position:relative;background:var(--surface);border:1px solid var(--line);
+      border-left:3px solid var(--accent);border-radius:0 10px 10px 0;
+      padding:15px 40px 13px 18px;margin:0 0 28px;font-size:13.5px}
+.anleitung b.kopf{display:block;font-size:15px;margin-bottom:6px}
+.anleitung ol{margin:6px 0 8px;padding-left:20px}
+.anleitung li{margin:5px 0}
+.anleitung .still{color:var(--text-dim);font-size:12px}
+.anleitung code{font-size:12px}
+.anleitung a{color:var(--accent);font-weight:600;text-decoration:none}
+.anleitung a:hover{text-decoration:underline}
+.anleitung .weg{position:absolute;top:8px;right:10px;border:0;background:none;
+      color:var(--text-dim);font-size:19px;line-height:1;cursor:pointer;padding:4px}
+.anleitung .weg:hover{color:var(--text)}
 .reihe{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px}
 .klein{background:var(--surface);border:1px solid var(--line);border-radius:9px;
        padding:11px 13px;text-decoration:none;color:inherit;display:block}
@@ -96,30 +109,15 @@ pub fn bauen(
         }
     }
 
-    // ---- Noch keine Lernseiten: freundlich erklaeren statt leer bleiben ----
+    // ---- Erste Schritte: solange noch keine eigene Seite da ist ----
+    let nur_beispiel = alle.iter().all(|s| s.id == BEISPIEL_ID);
     if alle.is_empty() {
-        let ordner = orte().seiten.display().to_string();
-        let trenner = std::path::MAIN_SEPARATOR;
-        html += &format!(
-            r#"<div class="leer">
-<b>Noch keine Lernseiten da.</b><br><br>
-Lernseiten sind einzelne HTML-Dateien. Sie geh&ouml;ren in diesen Ordner:<br>
-<code>{ordner}{t}&lt;Fach&gt;{t}&lt;Thema&gt;{t}&lt;name&gt;.html</code><br><br>
-Am einfachsten l&auml;sst du sie dir von einer KI bauen: <b>Datei &rarr; Bauanleitung
-f&uuml;r eine KI kopieren</b>, in den Chat einf&uuml;gen, die fertige Seite kopieren und
-<b>Datei &rarr; Seite aus Zwischenablage einf&uuml;gen</b> &mdash; die Lernkiste sortiert
-sie selbst ein. Liegen Dateien direkt im Ordner, danach <b>Datei &rarr; Seiten neu
-einlesen</b> (Strg+R). Den Ordner selbst findest du &uuml;ber <b>Datei &rarr; Ordner mit
-den Lernseiten &ouml;ffnen</b>.
-</div>
-<div class="fuss">Noch keine Lernseiten &middot;
-Fortschritt wird automatisch gesichert</div>
-</div></body></html>
-"#,
-            ordner = esc(&ordner),
-            t = trenner
-        );
+        html += &anleitung(false, false);
+        html += "<div class=\"fuss\">Noch keine Lernseiten &middot;\nFortschritt wird automatisch gesichert</div>\n</div></body></html>\n";
         return html;
+    }
+    if nur_beispiel && !zustand.anleitung_ausgeblendet {
+        html += &anleitung(true, true);
     }
 
     // ---- Heute dran ----
@@ -323,6 +321,37 @@ fn begruessung() -> &'static str {
         18..=22 => "Guten Abend",
         _ => "Noch wach?",
     }
+}
+
+/// Der Kasten „Erste Schritte“. Er verschwindet von selbst, sobald eine
+/// eigene Seite neben der Beispielseite liegt; per × auch schon vorher.
+fn anleitung(beispiel_da: bool, ausblendbar: bool) -> String {
+    let ordner = orte().seiten.display().to_string();
+    let mut h = String::from("<div class=\"anleitung\">\n");
+    if ausblendbar {
+        h += "<button class=\"weg\" title=\"Ausblenden\" onclick=\"parent.postMessage({art:'anleitungWeg'},location.origin)\">&times;</button>\n";
+    }
+    h += "<b class=\"kopf\">Erste Schritte</b>\n<ol>\n";
+    if beispiel_da {
+        h += &format!(
+            "<li><b>Ausprobieren:</b> <a href=\"#\" onclick=\"oeffne('{}');return false\">Beispielseite \
+             &ouml;ffnen</a> &mdash; so sieht eine Lernseite aus. Dein Fortschritt wird von selbst gesichert.</li>\n",
+            BEISPIEL_ID
+        );
+    }
+    h += "<li><b>Eigene Seite bauen lassen:</b> <b>Datei &rarr; Bauanleitung f&uuml;r eine KI \
+          kopieren</b>, in den Chat mit einer KI einf&uuml;gen und dazuschreiben, was du &uuml;ben willst.</li>\n\
+          <li><b>Hinzuf&uuml;gen:</b> Die fertige Seite kopieren und <b>Datei &rarr; Seite aus \
+          Zwischenablage einf&uuml;gen</b> (Strg+Umschalt+V) &mdash; oder eine .html-Datei bzw. ein \
+          ZIP-Paket ins Fenster ziehen. Die Lernkiste sortiert sie selbst ins richtige Fach.</li>\n\
+          <li><b>Weitergeben:</b> Rechtsklick auf eine Seite, ein Thema oder ein Fach &rarr; \
+          <b>Exportieren &hellip;</b></li>\n</ol>\n";
+    h += &format!(
+        "<div class=\"still\">Dieser Kasten verschwindet, sobald deine erste eigene Seite da ist. \
+         Alle Seiten liegen in <code>{}</code>.</div>\n</div>\n",
+        esc(&ordner)
+    );
+    h
 }
 
 pub fn esc(text: &str) -> String {

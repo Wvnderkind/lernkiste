@@ -205,6 +205,66 @@ main {
 .symbol svg { width: 16px; height: 16px; }
 #thema .voll { fill: currentColor; stroke: none; }
 #stern.an { color: var(--stern); }
+#info { position: relative; }
+#info .voll { fill: currentColor; stroke: none; }
+#info .punkt {
+  position: absolute;
+  top: 4px; right: 5px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #ff453a;
+  box-shadow: 0 0 0 1.5px var(--seite);
+}
+#info .punkt[hidden] { display: none; }
+
+/* ⓘ-Fenster „Was ist neu?" */
+.blase {
+  position: fixed;
+  z-index: 12;
+  width: min(360px, calc(100vw - 16px));
+  max-height: min(460px, calc(100vh - 70px));
+  overflow-y: auto;
+  padding: 12px 16px 10px;
+  border: 1px solid var(--linie);
+  border-radius: 10px;
+  background: var(--frage);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .35);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.blase[hidden] { display: none; }
+.blase h2 { margin: 0 0 4px; font-size: 15px; }
+.blase .wann { margin: 10px 0 4px; color: var(--leise); font-size: 11.5px; font-weight: 600; }
+.blase ul { margin: 0; padding-left: 16px; }
+.blase li { margin: 0 0 5px; }
+.blase .leise { color: var(--leise); margin: 4px 0; }
+
+/* Rechtsklick-Menue in der Leiste */
+.kontext {
+  position: fixed;
+  z-index: 13;
+  min-width: 190px;
+  padding: 4px;
+  border: 1px solid var(--linie);
+  border-radius: 8px;
+  background: var(--frage);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .35);
+}
+.kontext[hidden] { display: none; }
+.kontext .eintrag {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--schrift);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  white-space: nowrap;
+}
+.kontext .eintrag:hover, .kontext .eintrag:focus { background: var(--akzent); color: #fff; outline: none; }
 #stern.an svg { fill: currentColor; }
 
 .update {

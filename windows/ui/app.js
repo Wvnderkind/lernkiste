@@ -28,6 +28,9 @@
   var kopfEl = $('kopf');
   var sternEl = $('stern');
   var updateEl = $('update');
+  var infoEl = $('info');
+  var neuEl = $('neu');
+  var kontextEl = $('kontext');
 
   var ARCHIV = 'Fürs Physikum';
   var daten = { faecher: [], erledigt: [], favoriten: [], zuletzt: [], theme: 'dark' };
@@ -57,6 +60,7 @@
       daten = d;
       themaAnwenden();
       if (aktuell) aktuell = seiteMitId(aktuell.id);
+      leistenAbdruck = abdruck(d);
       baumBauen();
       kopfSetzen();
     });
@@ -97,6 +101,7 @@
     z.addEventListener('click', function () {
       if (!aktuell || aktuell.id !== seite.id) oeffnen(seite);
     });
+    kontextAn(z, { was: 'Seite', name: seite.titel, seiten: [seite], ebene: 0 });
     return z;
   }
 
@@ -135,11 +140,17 @@
         kinder.push(seitenZeile(t.seiten[0], 1));
       } else {
         var schluessel = bereich + '/' + fach.name + '/' + t.name;
-        kinder.push(gruppe(schluessel, ordnerZeile('thema', t.name, 1),
+        var themaZeile = ordnerZeile('thema', t.name, 1);
+        kontextAn(themaZeile, { was: 'Thema', name: t.name, paket: fach.name + ' – ' + t.name, seiten: t.seiten, ebene: 1 });
+        kinder.push(gruppe(schluessel, themaZeile,
           t.seiten.map(function (s) { return seitenZeile(s, 2); }), standardOffen));
       }
     });
-    return gruppe(bereich + '/' + fach.name, ordnerZeile('fach', fach.name, 0), kinder, standardOffen);
+    var fachZeile = ordnerZeile('fach', fach.name, 0);
+    var alleImFach = [];
+    fach.themen.forEach(function (t) { alleImFach = alleImFach.concat(t.seiten); });
+    kontextAn(fachZeile, { was: 'Fach', name: fach.name, seiten: alleImFach, ebene: 2 });
+    return gruppe(bereich + '/' + fach.name, fachZeile, kinder, standardOffen);
   }
 
   function bereich(name, kinder) {
@@ -291,6 +302,7 @@
       }
     } else if (pfad === '/start' || pfad === '/') {
       if (aktuell) { aktuell = null; kopfSetzen(); markieren(); }
+      startMerken();
     }
     themaInRahmen();
     trenner(false);   // jede Seite faengt oben an
@@ -403,6 +415,7 @@
     else if (k === 'f' && !e.shiftKey) aktion = 'suchen';
     else if (k === 'o' && !e.shiftKey) aktion = 'importieren';
     else if (k === 'v' && e.shiftKey) aktion = 'zwischenablage';
+    else if (k === 'e' && !e.shiftKey) aktion = 'exportieren';
     if (!aktion) return;
     e.preventDefault();
     e.stopPropagation();
@@ -420,6 +433,9 @@
       case 'scroll': trenner(!n.oben); break;
       case 'extern': if (typeof n.url === 'string') invoke('extern_oeffnen', { url: n.url }).catch(function () {}); break;
       case 'taste': if (typeof n.aktion === 'string') taste(n.aktion); break;
+      case 'anleitungWeg':
+        invoke('anleitung_ausblenden').then(function () { if (!aktuell) rahmen.src = '/start'; }).catch(function () {});
+        break;
     }
   });
 
@@ -435,6 +451,9 @@
   listen('seite_oeffnen', function (e) { if (typeof e.payload === 'string') oeffnenPerId(e.payload); });
   listen('ort_fragen', function (e) { ortFragen(e.payload || {}); });
   listen('suche_fokus', sucheFokus);
+  listen('exportieren_bitte', function () {
+    invoke('exportieren', { ids: aktuell ? [aktuell.id] : [], name: aktuell ? aktuell.titel : '' }).catch(function () {});
+  });
   listen('update', function (e) { updateKnopf(e.payload); });
   listen('sichern_bitte', function () {
     sichern().then(function () { return invoke('gesichert'); }).catch(function () {});
@@ -503,10 +522,174 @@
     if (!e.target.closest('input, textarea')) e.preventDefault();
   });
 
+  // MARK: Rechtsklick in der Leiste: Exportieren / Im Explorer zeigen
+
+  function kontextAn(zeile, ziel) {
+    zeile.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      kontextZeigen(e.clientX, e.clientY, ziel);
+    });
+  }
+
+  function kontextZeigen(x, y, ziel) {
+    blaseZu();
+    kontextEl.textContent = '';
+    var ids = ziel.seiten.map(function (s) { return s.id; });
+    var titel = ziel.was === 'Seite' ? 'Seite exportieren …'
+      : ziel.was + ' „' + ziel.name + '“ exportieren …';
+    kontextEintrag(titel, function () {
+      invoke('exportieren', { ids: ids, name: ziel.paket || ziel.name }).catch(function () {});
+    });
+    if (ids.length) {
+      kontextEintrag('Im Explorer zeigen', function () {
+        invoke('im_explorer_zeigen', { id: ids[0], ebene: ziel.ebene }).catch(function () {});
+      });
+    }
+    kontextEl.hidden = false;
+    var b = kontextEl.offsetWidth, h = kontextEl.offsetHeight;
+    kontextEl.style.left = Math.max(4, Math.min(x, innerWidth - b - 4)) + 'px';
+    kontextEl.style.top = Math.max(4, Math.min(y, innerHeight - h - 4)) + 'px';
+    var erster = kontextEl.querySelector('button');
+    if (erster) erster.focus();
+  }
+
+  function kontextEintrag(text, tun) {
+    var k = el('button', 'eintrag', text);
+    k.type = 'button';
+    k.setAttribute('role', 'menuitem');
+    k.addEventListener('click', function () { kontextZu(); tun(); });
+    kontextEl.appendChild(k);
+  }
+
+  function kontextZu() { kontextEl.hidden = true; }
+
+  // MARK: ⓘ — was mit den letzten Updates neu kam
+
+  function neuigkeitenLaden() {
+    return invoke('neuigkeiten').then(function (n) {
+      infoEl.querySelector('.punkt').hidden = !n.ungelesen;
+      return n;
+    });
+  }
+
+  function datumLesbar(iso) {
+    var d = new Date(iso + 'T12:00:00');
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function blaseZeigen() {
+    kontextZu();
+    neuigkeitenLaden().then(function (n) {
+      neuEl.textContent = '';
+      neuEl.appendChild(el('h2', null, 'Neu in der Lernkiste'));
+      if (!n.eintraege.length) {
+        neuEl.appendChild(el('p', 'leise', 'Hier steht nach dem nächsten Update, was sich geändert hat.'));
+      }
+      n.eintraege.forEach(function (e) {
+        neuEl.appendChild(el('div', 'wann', datumLesbar(e.datum)));
+        var liste = el('ul');
+        e.punkte.forEach(function (p) { liste.appendChild(el('li', null, p)); });
+        neuEl.appendChild(liste);
+      });
+      var r = infoEl.getBoundingClientRect();
+      neuEl.style.top = (r.bottom + 6) + 'px';
+      neuEl.style.right = Math.max(8, innerWidth - r.right - 8) + 'px';
+      neuEl.hidden = false;
+      neuEl.scrollTop = 0;
+      infoEl.querySelector('.punkt').hidden = true;
+      return invoke('neuigkeiten_gelesen');
+    }).catch(function () {});
+  }
+
+  function blaseZu() { neuEl.hidden = true; }
+
+  infoEl.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (neuEl.hidden) blaseZeigen(); else blaseZu();
+  });
+
+  // Klick daneben, Esc oder ein Klick in die Lernseite (das Fenster verliert
+  // dann den Fokus an den Rahmen) schliesst Menue und ⓘ-Fenster.
+  document.addEventListener('mousedown', function (e) {
+    if (!kontextEl.hidden && !kontextEl.contains(e.target)) kontextZu();
+    if (!neuEl.hidden && !neuEl.contains(e.target) && !infoEl.contains(e.target)) blaseZu();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { kontextZu(); blaseZu(); }
+  });
+  window.addEventListener('blur', function () { kontextZu(); blaseZu(); });
+  window.addEventListener('resize', function () { kontextZu(); blaseZu(); });
+  baumEl.addEventListener('scroll', kontextZu);
+
+  // MARK: Von selbst auffrischen
+  // Alle 30 Minuten, direkt nach Mitternacht und beim Zurueckkehren ins
+  // Fenster: neue Seiten erscheinen, der Gruss wechselt, die Haken vom Vortag
+  // verschwinden. Neu gezeichnet wird nur, was sich wirklich geaendert hat —
+  // eine offene Lernseite bleibt unberuehrt.
+
+  var leistenAbdruck = '';
+  var startInhalt = null;
+  var zuletztAufgefrischt = Date.now();
+
+  function heute() {
+    var d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+  var angezeigterTag = heute();
+
+  function abdruck(d) {
+    var teile = [heute(), (d.favoriten || []).join(',')];
+    (d.faecher || []).forEach(function (f) {
+      f.themen.forEach(function (t) {
+        t.seiten.forEach(function (s) {
+          teile.push([s.id, s.titel, f.name, t.name, f.archiv ? 1 : 0,
+            (d.erledigt || []).indexOf(s.id) >= 0 ? 1 : 0].join('|'));
+        });
+      });
+    });
+    return teile.join('\n');
+  }
+
+  function startMerken() {
+    fetch('/start', { cache: 'no-store' }).then(function (r) { return r.text(); })
+      .then(function (t) { startInhalt = t; }).catch(function () {});
+  }
+
+  function auffrischen() {
+    zuletztAufgefrischt = Date.now();
+    angezeigterTag = heute();
+    // Nicht mitten in eine Frage oder ein offenes Menue hineinzeichnen.
+    if (!$('ort').hidden || !kontextEl.hidden) return;
+    invoke('neu_einlesen').then(function (d) {
+      var neu = abdruck(d);
+      if (neu !== leistenAbdruck) {
+        daten = d;
+        if (aktuell) aktuell = seiteMitId(aktuell.id) || aktuell;
+        leistenAbdruck = neu;
+        baumBauen();
+        kopfSetzen();
+      }
+      if (!aktuell && startInhalt !== null) {
+        return fetch('/start', { cache: 'no-store' }).then(function (r) { return r.text(); })
+          .then(function (t) { if (!aktuell && t !== startInhalt) rahmen.src = '/start'; });
+      }
+    }).catch(function (e) { protokoll('Auffrischen: ' + (e && e.message || e)); });
+    neuigkeitenLaden().catch(function () {});
+  }
+
+  setInterval(auffrischen, 30 * 60 * 1000);
+  setInterval(function () { if (heute() !== angezeigterTag) auffrischen(); }, 60 * 1000);
+  window.addEventListener('focus', function () {
+    if (Date.now() - zuletztAufgefrischt > 60 * 1000) auffrischen();
+  });
+
   // MARK: Start
 
   laden(false).then(function () {
     startseite();
+    neuigkeitenLaden().catch(function () {});
     return invoke('bereit');
   }).then(updateKnopf).catch(function (e) {
     protokoll('Start: ' + (e && e.message || e));

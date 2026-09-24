@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-anleitung-ausblenden"
+description = "Enables the anleitung_ausblenden command without any pre-configured scope."
+commands.allow = ["anleitung_ausblenden"]
+
+[[permission]]
+identifier = "deny-anleitung-ausblenden"
+description = "Denies the anleitung_ausblenden command without any pre-configured scope."
+commands.deny = ["anleitung_ausblenden"]

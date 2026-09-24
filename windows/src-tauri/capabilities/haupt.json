@@ -26,6 +26,11 @@
     "allow-beenden",
     "allow-update-installieren",
     "allow-bereit",
-    "allow-protokoll"
+    "allow-protokoll",
+    "allow-exportieren",
+    "allow-im-explorer-zeigen",
+    "allow-neuigkeiten",
+    "allow-neuigkeiten-gelesen",
+    "allow-anleitung-ausblenden"
   ]
 }

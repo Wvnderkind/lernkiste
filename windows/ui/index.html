@@ -29,6 +29,10 @@
     <button id="stern" class="symbol" type="button" title="Seite anpinnen" aria-label="Seite anpinnen" hidden>
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8l1.85 3.9 4.25.55-3.1 2.95.8 4.2L8 11.35 4.2 13.4l.8-4.2-3.1-2.95 4.25-.55z"/></svg>
     </button>
+    <button id="info" class="symbol" type="button" title="Was ist neu?" aria-label="Was ist neu?">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 7.3v4"/><circle class="voll" cx="8" cy="4.9" r=".95"/></svg>
+      <span class="punkt" hidden></span>
+    </button>
     <button id="thema" class="symbol" type="button" title="Hell / Dunkel" aria-label="Hell / Dunkel">
       <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6"/><path class="voll" d="M8 2.4a5.6 5.6 0 0 0 0 11.2z"/></svg>
     </button>
@@ -50,6 +54,9 @@
     </div>
   </form>
 </div>
+
+<div id="neu" class="blase" role="dialog" aria-label="Was ist neu?" hidden></div>
+<div id="kontext" class="kontext" role="menu" hidden></div>
 
 <script src="app.js"></script>
 </body>

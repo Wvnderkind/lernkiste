@@ -53,6 +53,19 @@ enum Startseite {
         .balken i.geschafft{background:var(--ok)}
         .leer{color:var(--text-dim);font-size:13px;background:var(--surface);
               border:1px dashed var(--line);border-radius:10px;padding:16px}
+        .anleitung{position:relative;background:var(--surface);border:1px solid var(--line);
+              border-left:3px solid var(--accent);border-radius:0 10px 10px 0;
+              padding:15px 40px 13px 18px;margin:0 0 28px;font-size:13.5px}
+        .anleitung b.kopf{display:block;font-size:15px;margin-bottom:6px}
+        .anleitung ol{margin:6px 0 8px;padding-left:20px}
+        .anleitung li{margin:5px 0}
+        .anleitung .still{color:var(--text-dim);font-size:12px}
+        .anleitung code{font-size:12px}
+        .anleitung a{color:var(--accent);font-weight:600;text-decoration:none}
+        .anleitung a:hover{text-decoration:underline}
+        .anleitung .weg{position:absolute;top:8px;right:10px;border:0;background:none;
+              color:var(--text-dim);font-size:19px;line-height:1;cursor:pointer;padding:4px}
+        .anleitung .weg:hover{color:var(--text)}
         .reihe{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px}
         .klein{background:var(--surface);border:1px solid var(--line);border-radius:9px;
                padding:11px 13px;text-decoration:none;color:inherit;display:block}
@@ -82,27 +95,18 @@ enum Startseite {
             """
         }
 
-        // ---- Noch keine Lernseiten: freundlich erklaeren statt leer bleiben ----
+        // ---- Erste Schritte: solange noch keine eigene Seite da ist ----
         if alle.isEmpty {
-            let ordner = Orte.seiten.path.replacingOccurrences(
-                of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")
+            html += anleitung(beispielDa: false, ausblendbar: false)
             html += """
-            <div class="leer">
-            <b>Noch keine Lernseiten da.</b><br><br>
-            Lernseiten sind einzelne HTML-Dateien. Sie geh&ouml;ren in diesen Ordner:<br>
-            <code>\(esc(ordner))/&lt;Fach&gt;/&lt;Thema&gt;/&lt;name&gt;.html</code><br><br>
-            Am einfachsten l&auml;sst du sie dir von Claude bauen &mdash; die Anleitung daf&uuml;r
-            liegt im heruntergeladenen Ordner unter <code>Fuer-Claude/START-HIER.md</code>.
-            Zum Ausprobieren kannst du die Datei aus <code>Beispiel/</code> in den Ordner oben
-            kopieren. Danach im Men&uuml; <b>Ablage &rarr; Seiten neu einlesen</b> (&#8984;R).
-            Den Ordner selbst findest du &uuml;ber <b>Ablage &rarr; Ordner mit den Lernseiten
-            &ouml;ffnen</b>.
-            </div>
             <div class="fuss">Noch keine Lernseiten &middot;
             Fortschritt wird automatisch gesichert</div>
             </div></body></html>
             """
             return html
+        }
+        if alle.allSatisfy({ $0.id == Orte.beispielID }), zustand.anleitungAusgeblendet != true {
+            html += anleitung(beispielDa: true, ausblendbar: true)
         }
 
         // ---- Heute dran ----
@@ -276,6 +280,43 @@ enum Startseite {
         anzeige.locale = Locale(identifier: "de_DE")
         anzeige.dateFormat = "d. MMMM"
         return (termin.name, tage, anzeige.string(from: tag))
+    }
+
+    /// Der Kasten „Erste Schritte“. Er verschwindet von selbst, sobald eine
+    /// eigene Seite neben der Beispielseite liegt; per × auch schon vorher.
+    private static func anleitung(beispielDa: Bool, ausblendbar: Bool) -> String {
+        let ordner = Orte.seiten.path.replacingOccurrences(
+            of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")
+        var h = "<div class=\"anleitung\">\n"
+        if ausblendbar {
+            h += """
+            <button class="weg" title="Ausblenden" onclick="try{webkit.messageHandlers.lernkiste.postMessage({art:'anleitungWeg'})}catch(e){}">&times;</button>
+            """
+        }
+        h += "<b class=\"kopf\">Erste Schritte</b>\n<ol>\n"
+        if beispielDa {
+            h += """
+            <li><b>Ausprobieren:</b> <a href="#" onclick="oeffne('\(esc(Orte.beispielID))');return false">Beispielseite
+            &ouml;ffnen</a> &mdash; so sieht eine Lernseite aus. Dein Fortschritt wird von selbst gesichert.</li>
+            """
+        }
+        h += """
+        <li><b>Eigene Seite bauen lassen:</b> <b>Ablage &rarr; Bauanleitung f&uuml;r eine KI
+        kopieren</b>, in den Chat mit einer KI einf&uuml;gen und dazuschreiben, was du &uuml;ben willst.
+        Mit Claude Code geht es noch bequemer &mdash; siehe <code>Fuer-Claude/START-HIER.md</code>
+        im heruntergeladenen Ordner.</li>
+        <li><b>Hinzuf&uuml;gen:</b> Die fertige Seite kopieren und <b>Ablage &rarr; Seite aus
+        Zwischenablage einf&uuml;gen</b> (&#8679;&#8984;V) &mdash; oder eine .html-Datei bzw. ein
+        ZIP-Paket in die Leiste ziehen. Die Lernkiste sortiert sie selbst ins richtige Fach.</li>
+        <li><b>Weitergeben:</b> Rechtsklick auf eine Seite, ein Thema oder ein Fach &rarr;
+        <b>teilen</b> (AirDrop, Nachrichten, Mail &hellip;).</li>
+        </ol>
+        <div class="still">Dieser Kasten verschwindet, sobald deine erste eigene Seite da ist.
+        Alle Seiten liegen in <code>\(esc(ordner))</code>.</div>
+        </div>
+
+        """
+        return h
     }
 
     static func esc(_ text: String) -> String {

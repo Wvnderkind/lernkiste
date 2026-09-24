@@ -27,6 +27,11 @@ fn main() {
             "update_installieren",
             "bereit",
             "protokoll",
+            "exportieren",
+            "im_explorer_zeigen",
+            "neuigkeiten",
+            "neuigkeiten_gelesen",
+            "anleitung_ausblenden",
         ]),
     ))
     .expect("tauri-build")

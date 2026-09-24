@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-neuigkeiten-gelesen"
+description = "Enables the neuigkeiten_gelesen command without any pre-configured scope."
+commands.allow = ["neuigkeiten_gelesen"]
+
+[[permission]]
+identifier = "deny-neuigkeiten-gelesen"
+description = "Denies the neuigkeiten_gelesen command without any pre-configured scope."
+commands.deny = ["neuigkeiten_gelesen"]

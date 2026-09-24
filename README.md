@@ -110,6 +110,16 @@ ein Thema oder Fach als ZIP-Paket. Der Empfänger zieht die Datei einfach in sei
 Lernkiste-Leiste oder wählt **Ablage → Seite importieren …**. Die Seiten landen dann
 von selbst im richtigen Fach und Thema. Dein Lernstand geht dabei nicht mit.
 
+**Was ist neu?** Das kleine **ⓘ** oben rechts neben dem Hell/Dunkel-Schalter bekommt
+nach einem Update einen roten Punkt. Ein Klick zeigt, was sich geändert hat.
+
+**Die App frischt sich selbst auf** — alle 30 Minuten, kurz nach Mitternacht und wenn
+man ins Fenster zurückkommt: Neue Seiten erscheinen in der Leiste, der Gruß wechselt,
+die Haken vom Vortag verschwinden.
+
+**Nach der Installation** erklärt die Startseite die ersten Schritte. Der Kasten
+verschwindet, sobald die erste eigene Seite da ist (oder mit dem ×).
+
 **Roter Kasten oben auf einer Seite?** Dann hat die Seite Baufehler. Auf
 **Liste kopieren** drücken, die Liste der KI geben und um eine korrigierte Fassung
 bitten, danach wieder einfügen.
@@ -192,8 +202,13 @@ Alles andere funktioniert wie auf dem Mac — mit **Strg** statt ⌘ und dem Men
 **Datei** statt **Ablage**: Seiten importieren (Strg+O), in die Leiste ziehen, aus der
 Zwischenablage einfügen (Strg+Umschalt+V), eine `.html`-Datei per Rechtsklick →
 **Öffnen mit → Lernkiste** hineinholen. ZIP-Pakete, die jemand am Mac mit **Teilen**
-verschickt hat, lassen sich genauso importieren oder in die Leiste ziehen (das
-Teilen selbst gibt es unter Windows noch nicht).
+verschickt hat, lassen sich genauso importieren oder in die Leiste ziehen.
+
+**Seiten weitergeben:** In der Leiste mit der rechten Maustaste auf eine Seite, ein
+Thema oder ein Fach klicken → **… exportieren …** und einen Speicherort wählen (die
+offene Seite geht auch über **Datei → Seite exportieren …**, Strg+E). Eine Seite wird
+eine `.html`-Datei, ein Thema oder Fach ein ZIP-Paket — das kann man per Mail,
+WhatsApp oder USB-Stick weitergeben. Der Lernstand bleibt bei dir.
 
 **Updates kommen von selbst.** Gibt es eine neue Fassung, erscheint oben rechts der
 Knopf **Update verfügbar**. Ein Klick, **Jetzt aktualisieren** — die Lernkiste lädt

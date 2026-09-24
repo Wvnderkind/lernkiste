@@ -7,9 +7,11 @@
 
 mod aktualisierung;
 mod bibliothek;
+mod export;
 mod fortschritt;
 mod import;
 mod kern;
+mod neuigkeiten;
 mod orte;
 mod server;
 mod startseite;
@@ -80,6 +82,11 @@ fn main() {
             update_installieren,
             bereit,
             protokoll,
+            exportieren,
+            im_explorer_zeigen,
+            neuigkeiten,
+            neuigkeiten_gelesen,
+            anleitung_ausblenden,
         ])
         .setup(move |app| {
             log::info!("Lernkiste {} startet (Stand {})", app.package_info().version, orte::stand());
@@ -278,6 +285,7 @@ fn menue_bauen(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
             &eintrag("ordner_oeffnen", "Ordner mit den Lernseiten öffnen", None)?,
             &PredefinedMenuItem::separator(app)?,
             &eintrag("importieren", "Seite importieren …", Some("CmdOrCtrl+O"))?,
+            &eintrag("exportieren", "Seite exportieren …", Some("CmdOrCtrl+E"))?,
             &eintrag("zwischenablage", "Seite aus Zwischenablage einfügen", Some("CmdOrCtrl+Shift+V"))?,
             &eintrag("bauanleitung", "Bauanleitung für eine KI kopieren", None)?,
             &PredefinedMenuItem::separator(app)?,
@@ -359,6 +367,10 @@ fn menue_ausfuehren(app: &AppHandle, name: &str) {
         }
         "importieren" => import::dateien_waehlen(app),
         "zwischenablage" => import::aus_zwischenablage(app),
+        // Die Oberflaeche weiss, welche Seite gerade offen ist.
+        "exportieren" => {
+            let _ = app.emit_to("haupt", "exportieren_bitte", ());
+        }
         "bauanleitung" => import::bauanleitung_kopieren(app),
         "beenden" => schliessen_einleiten(app),
         "suchen" => {
@@ -568,6 +580,49 @@ fn bereit(app: AppHandle, kern: KernZ) -> Value {
 fn protokoll(text: String) {
     let kurz: String = text.chars().take(2000).collect();
     log::warn!("Oberfläche: {kurz}");
+}
+
+/// Rechtsklick → „Exportieren …“: eine Seite als .html, mehrere als ZIP.
+#[tauri::command]
+fn exportieren(app: AppHandle, ids: Vec<String>, name: String) {
+    export::exportieren(&app, ids, name);
+}
+
+/// Rechtsklick → „Im Explorer zeigen“ (0 = Seite, 1 = Thema, 2 = Fach).
+#[tauri::command]
+fn im_explorer_zeigen(app: AppHandle, id: String, ebene: u8) {
+    export::zeigen(&app, &id, ebene);
+}
+
+/// Inhalt fuer das ⓘ oben rechts und ob der Punkt daran leuchten soll.
+#[tauri::command]
+fn neuigkeiten(kern: KernZ) -> Value {
+    let gesehen = kern.zustand.lock().ok().and_then(|z| z.neuigkeit_gesehen.clone());
+    let kennung = neuigkeiten::kennung();
+    json!({
+        "eintraege": neuigkeiten::fuer_windows(),
+        "ungelesen": kennung.is_some() && kennung != gesehen,
+    })
+}
+
+#[tauri::command]
+fn neuigkeiten_gelesen(kern: KernZ) {
+    let Some(kennung) = neuigkeiten::kennung() else { return };
+    if let Ok(mut z) = kern.zustand.lock() {
+        if z.neuigkeit_gesehen.as_deref() != Some(kennung.as_str()) {
+            z.neuigkeit_gesehen = Some(kennung);
+            z.sichern();
+        }
+    }
+}
+
+/// Das × am Kasten „Erste Schritte“ auf der Startseite.
+#[tauri::command]
+fn anleitung_ausblenden(kern: KernZ) {
+    if let Ok(mut z) = kern.zustand.lock() {
+        z.anleitung_ausgeblendet = true;
+        z.sichern();
+    }
 }
 
 /// Nur im Testbau: LERNKISTE_SELBSTTEST=<datei.js> spielt ein Skript in der
