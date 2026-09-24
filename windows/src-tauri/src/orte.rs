@@ -10,6 +10,8 @@ use std::sync::OnceLock;
 pub const MOTOR_JS: &str = include_str!("../../../Ressourcen/lernkiste.js");
 pub const MOTOR_CSS: &str = include_str!("../../../Ressourcen/lernkiste.css");
 pub const TOKENS_CSS: &str = include_str!("../../../Ressourcen/tokens.css");
+/// Huelle fuer Fehlerkiste und Probeklausur (/mix) — mischt Aufgaben mehrerer Seiten.
+pub const MIX_HTML: &str = include_str!("../../../Ressourcen/mix.html");
 pub const KI_VORLAGE: &str = include_str!("../../../Ressourcen/ki-vorlage.md");
 pub const BEISPIEL: &str =
     include_str!("../../../Beispiel/Biochemie/Aminosaeuren/aminosaeuren-grundlagen.html");
@@ -31,6 +33,7 @@ pub struct Orte {
     pub gif_nutzung: PathBuf,
     pub tagesplan: PathBuf,
     pub konfig: PathBuf,
+    pub meldungen: PathBuf,
     pub zustand: PathBuf,
     pub motor: PathBuf,
     pub archiv: PathBuf,
@@ -56,6 +59,7 @@ pub fn orte() -> &'static Orte {
             gif_nutzung: gifs.join("nutzung.json"),
             tagesplan: daten.join("tagesplan.json"),
             konfig: daten.join("konfiguration.json"),
+            meldungen: daten.join("meldungen.json"),
             zustand: daten.join("zustand.json"),
             motor: seiten.join("_motor"),
             archiv: daten.join("_archiv"),

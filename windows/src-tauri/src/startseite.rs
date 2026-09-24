@@ -3,6 +3,7 @@
 
 use crate::bibliothek::{alle_seiten, fach_ist_archiv, Fach, Konfiguration, Seite, Tagesplan};
 use crate::fortschritt::{SeitenStand, Zustand};
+use crate::meldungen;
 use crate::orte::{orte, BEISPIEL_ID};
 use crate::zeit;
 use std::collections::HashMap;
@@ -68,6 +69,21 @@ h2:first-of-type{margin-top:0}
 .klein .titel{font-weight:500;font-size:13px}
 .klein .fach{font-size:10.5px;color:var(--text-dim);margin-top:3px;
              text-transform:uppercase;letter-spacing:.6px}
+.fachuebung{display:grid;gap:10px}
+.fachuebung .karte{cursor:default}
+.fachuebung .karte:hover{transform:none;border-color:var(--line)}
+.fachuebung .zahlen{font-size:12.5px;color:var(--text-dim);margin-top:4px}
+.fachuebung .zahlen b{color:var(--text)}
+.fachuebung .knoepfe{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+.fachuebung .knoepfe a{font-size:12.5px;font-weight:600;text-decoration:none;
+      padding:5px 11px;border-radius:7px;border:1px solid var(--line);
+      color:var(--text);background:var(--surface-2)}
+.fachuebung .knoepfe a:hover{border-color:var(--accent);color:var(--accent)}
+.fachuebung .knoepfe a.an{background:var(--accent);border-color:var(--accent);color:#fff}
+.fachuebung .knoepfe a.aus{opacity:.4;pointer-events:none}
+.meldehinweis{font-size:12.5px;color:var(--text-dim);background:var(--surface);
+      border:1px dashed var(--line);border-radius:9px;padding:10px 13px;margin-top:10px}
+.meldehinweis b{color:var(--no)}
 .fuss{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);
       color:var(--text-dim);font-size:11.5px}
 </style></head><body><div class="huelle">
@@ -143,6 +159,9 @@ pub fn bauen(
                      die Seiten, die am längsten nicht dran waren.</div>\n";
         }
     }
+
+    // ---- Fehlerkiste und Probeklausur je Fach ----
+    html += &fach_uebung(faecher);
 
     // ---- Wackelkandidaten ----
     let mut wacklig: Vec<(&Seite, &SeitenStand)> = alle
@@ -224,6 +243,113 @@ pub fn bauen(
 }
 
 // MARK: - Bausteine
+
+// MARK: - Fehlerkiste und Probeklausur
+
+/// Seiten, die den gemeinsamen Motor benutzen — nur die koennen in der
+/// Fehlerkiste und der Probeklausur mitlaufen.
+fn mit_motor(seite: &Seite) -> bool {
+    use std::io::Read;
+    let Ok(datei) = std::fs::File::open(&seite.datei) else { return false };
+    let mut anfang = Vec::new();
+    let _ = datei.take(16 * 1024).read_to_end(&mut anfang);
+    String::from_utf8_lossy(&anfang).contains("_motor/lernkiste.js")
+}
+
+/// Je Fach: was heute faellig ist, wie viele Wackler es gibt, und der Weg
+/// zur Probeklausur. Gezaehlt wird im Browser aus dem gespeicherten Stand.
+fn fach_uebung(faecher: &[Fach]) -> String {
+    let liste: Vec<(String, Vec<&Seite>)> = faecher
+        .iter()
+        .filter(|f| !f.archiv)
+        .filter_map(|f| {
+            let seiten: Vec<&Seite> = f.alle_seiten().filter(|s| mit_motor(s)).collect();
+            (!seiten.is_empty()).then(|| (f.name.clone(), seiten))
+        })
+        .collect();
+    let offen = meldungen::offen();
+    if liste.is_empty() && offen == 0 {
+        return String::new();
+    }
+
+    let mut h = String::from("<h2>Fehlerkiste &amp; Probeklausur</h2><div class=\"fachuebung\">");
+    for (n, (name, seiten)) in liste.iter().enumerate() {
+        h += &format!(
+            "<div class=\"karte\" id=\"fu{n}\">\n\
+             <div class=\"zeile\"><div class=\"titel\">{}</div>\n\
+             <span class=\"marke m-ruht\">{} {}</span></div>\n\
+             <div class=\"zahlen\">Heute fällig: <b class=\"nf\">–</b> · Wackler: <b class=\"nw\">–</b></div>\n\
+             <div class=\"knoepfe\">\n\
+             <a class=\"kf aus\" href=\"#\">Fällige üben</a>\n\
+             <a class=\"kw aus\" href=\"#\">Wackler üben</a>\n\
+             <a class=\"kk\" href=\"#\">Probeklausur</a>\n\
+             </div>\n</div>\n",
+            esc(name),
+            seiten.len(),
+            if seiten.len() == 1 { "Seite" } else { "Seiten" }
+        );
+    }
+    h += "</div>";
+    if offen > 0 {
+        h += &format!(
+            "<div class=\"meldehinweis\">⚑ <b>{offen} {} offen</b> —\n\
+             gemeldete Aufgaben stehen in <code>meldungen.json</code> im Lernkiste-Ordner.\n\
+             In Claude Code genügt: „schau die Meldungen durch“.</div>\n",
+            if offen == 1 { "Meldung" } else { "Meldungen" }
+        );
+    }
+    let daten: Vec<serde_json::Value> = liste
+        .iter()
+        .map(|(name, seiten)| {
+            serde_json::json!({
+                "name": name,
+                "seiten": seiten.iter().map(|s| serde_json::json!({
+                    "id": s.id, "v": s.version, "p": s.relativer_pfad
+                })).collect::<Vec<_>>()
+            })
+        })
+        .collect();
+    let daten = serde_json::Value::Array(daten).to_string().replace("</", "<\\/");
+    h += "<script src=\"/res/lernkiste.js\"></script>\n<script>\n(function(){\n  var F = ";
+    h += &daten;
+    h += FACH_UEBUNG_JS;
+    h
+}
+
+const FACH_UEBUNG_JS: &str = r#";
+  function adresse(modus, fach, pfade){
+    return "/mix?modus=" + modus + "&titel=" + encodeURIComponent(fach)
+      + pfade.map(function(p){ return "&p=" + encodeURIComponent(p); }).join("");
+  }
+  var LS = window.Lernseite || {};
+  F.forEach(function(f, n){
+    var box = document.getElementById("fu" + n);
+    if (!box) return;
+    var faellig = 0, wackler = 0, mitF = [], mitW = [];
+    f.seiten.forEach(function(s){
+      var o = null;
+      try { o = JSON.parse(localStorage.getItem("lern:" + s.id + "@v" + s.v) || "null"); } catch(e){}
+      var items = (o && o.items) || {}, nf = 0, nw = 0;
+      for (var k in items) {
+        var e = items[k];
+        if (LS.istFaellig && LS.istFaellig(e)) nf++;
+        if (e && e.letzter === "sassNicht") nw++;
+      }
+      faellig += nf; wackler += nw;
+      if (nf) mitF.push(s.p);
+      if (nw) mitW.push(s.p);
+    });
+    box.querySelector(".nf").textContent = faellig
+      + (faellig ? " aus " + mitF.length + (mitF.length === 1 ? " Seite" : " Seiten") : "");
+    box.querySelector(".nw").textContent = wackler;
+    var kf = box.querySelector(".kf"), kw = box.querySelector(".kw"), kk = box.querySelector(".kk");
+    if (faellig) { kf.className = "kf an"; kf.href = adresse("faellig", f.name, mitF); }
+    if (wackler) { kw.className = "kw"; kw.href = adresse("wackler", f.name, mitW); }
+    kk.href = adresse("klausur", f.name, f.seiten.map(function(s){ return s.p; }));
+  });
+})();
+</script>
+"#;
 
 /// `tagesbalken`: unter „Heute dran" zeigt der Balken das Tagespensum,
 /// sonst den Gesamtstand.

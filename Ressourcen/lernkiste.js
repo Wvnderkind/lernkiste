@@ -17,8 +17,27 @@
 (function (global) {
 "use strict";
 
+/* Misch-Modus: die Seite laeuft unsichtbar in der Fehlerkiste oder der
+   Probeklausur (mix.html) und zeigt nur die Aufgaben, die die Huelle anfordert. */
+var MIX = null;
+try {
+  if (/(^|&)mix=1(&|$)/.test(location.search.slice(1)) && global.parent !== global
+      && global.parent.LernkisteMix) MIX = global.parent.LernkisteMix;
+} catch (e) { MIX = null; }
+
+/* Die Bruecke zur App. Im Misch-Modus gehoert sie der Huelle. */
+function bruecke() {
+  if (MIX) { try { if (global.parent.Lernkiste) return global.parent.Lernkiste; } catch (e) {} }
+  return global.Lernkiste || null;
+}
+
 /* Theme: die App setzt es selbst. Im Browser der gespeicherte Wunsch. */
-if (!global.Lernkiste) {
+if (MIX) {
+  try {
+    document.documentElement.dataset.theme =
+      global.parent.document.documentElement.dataset.theme || "dark";
+  } catch (e) { document.documentElement.dataset.theme = "dark"; }
+} else if (!global.Lernkiste) {
   try {
     document.documentElement.dataset.theme = localStorage.getItem("lern-theme") || "dark";
   } catch (e) { document.documentElement.dataset.theme = "dark"; }
@@ -90,6 +109,62 @@ function nurGesetzte(o) {
   return r;
 }
 function $(id) { return document.getElementById(id); }
+/* Reiner Text aus dem HTML einer Aufgabe — fuer Meldungen und die Klausurtabelle. */
+function klartext(html) {
+  try {
+    var doc = new DOMParser().parseFromString(String(html == null ? "" : html), "text/html");
+    return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
+  } catch (e) { return String(html == null ? "" : html); }
+}
+
+/* ------------------------------------------------------------
+   Faelligkeit (verteiltes Wiederholen)
+   Richtig beantwortet: die Aufgabe steigt eine Stufe und ruht
+   1 → 3 → 7 → 16 → 35 Tage. Falsch: morgen wieder. Steht in der
+   App ein Pruefungstermin, kommt alles spaetestens am Vortag dran.
+   ------------------------------------------------------------ */
+var LEITER = [1, 3, 7, 16, 35];
+
+function datumPlus(iso, tage) {
+  var t = String(iso).slice(0, 10).split("-");
+  var d = new Date(+t[0], +t[1] - 1, +t[2]);
+  d.setDate(d.getDate() + tage);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0")
+                         + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function terminStr() {
+  try {
+    var b = bruecke(), t = b && b.termin;
+    return typeof t === "string" && /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : null;
+  } catch (e) { return null; }
+}
+
+function deckeln(datum) {
+  var t = terminStr();
+  if (!t || !datum) return datum;
+  var grenze = datumPlus(t, -1);
+  return grenze > heuteStr() && datum > grenze ? grenze : datum;
+}
+
+/* Wann ist ein Eintrag wieder dran? null = noch nie geuebt. Eintraege aus der
+   Zeit vor der Leiter bekommen ihr Datum aus dem letzten Ergebnis. */
+function faelligkeit(e) {
+  if (!e || !e.zuletzt) return null;
+  if (e.faellig) return deckeln(e.faellig);
+  if (e.letzter === "sassNicht") return datumPlus(e.zuletzt, 1);
+  var n = e.sass || 0;
+  return deckeln(datumPlus(e.zuletzt, n >= 3 ? 7 : n === 2 ? 3 : 1));
+}
+function istFaellig(e, heute) {
+  var f = faelligkeit(e);
+  return f !== null && f <= (heute || heuteStr());
+}
+function stufeVon(e) {
+  if (typeof e.stufe === "number") return e.stufe;
+  if (e.letzter === "sassNicht") return 0;
+  return Math.min(e.sass || 0, 3);
+}
 
 /* ------------------------------------------------------------
    Zustand
@@ -111,6 +186,8 @@ var kategorie = null;    // null = alle
 var variante = null;     // gewaehlte Abfragerichtung, "mix" = gemischt
 var umfang = null;       // gewaehlter Umfang (zweite Filterebene)
 var weiterUeben = false; // Tagespensum geschafft, er uebt trotzdem weiter
+var mixModus = null;     // im Misch-Modus: "ueben" | "klausur"
+var mixRueckruf = null;  // meldet der Huelle, wie die Aufgabe ausging
 
 /* ------------------------------------------------------------
    Speicher (genau ein Schluessel, Format laut Vertrag)
@@ -416,6 +493,7 @@ function start(cfg) {
     vonApp = (global.Lernkiste && global.Lernkiste.tagesplan)
            ? global.Lernkiste.tagesplan(K.id) : null;
   } catch (e) { vonApp = null; }
+  if (MIX) { mixStarten(standard); return; }
   plan = Object.assign({}, standard,
                        nurGesetzte((K.tagesplan || {})[heuteStr()]),
                        nurGesetzte(vonApp));
@@ -548,6 +626,227 @@ function klappbarMachen() {
 }
 
 /* ------------------------------------------------------------
+   Misch-Modus: Fehlerkiste und Probeklausur
+   Die Huelle (mix.html) laedt jede Seite eines Fachs unsichtbar
+   und fordert einzelne Aufgaben an. Gebucht wird hier, im
+   Speicher der jeweiligen Seite — so zaehlt alles zum Fortschritt.
+   ------------------------------------------------------------ */
+function mixStarten(standard) {
+  plan = standard;
+  kategorie = null; umfang = null; nurWackler = false;
+  var vs = varianten();
+  variante = vs.length > 1 ? "mix" : (vs.length ? vs[0].id : null);
+
+  var s = Store.load();
+  s.gesamt = alleItems.length;
+  if (!s.tagespensum || s.tagespensum.datum !== heuteStr()) {
+    s.tagespensum = { datum: heuteStr(), ziel: plan.ziel, geschafft: 0, treffer: 0, offen: {} };
+  }
+  Store.save(s);
+  aktiv = alleItems.slice();
+
+  /* Nur die Aufgabe ist zu sehen — Kopfzeile und eigene Kaesten der Seite nicht. */
+  Array.prototype.slice.call(document.body.children).forEach(function (kind) {
+    if (kind.tagName !== "SCRIPT") kind.style.display = "none";
+  });
+  var huelle = document.createElement("div");
+  huelle.className = "container lk-mix";
+  huelle.innerHTML = '<div id="lkHaupt"></div>';
+  document.body.insertBefore(huelle, document.body.firstChild);
+  document.body.style.padding = "0";
+  enterEinhaengen();
+  tippenUmleiten();
+
+  function hoeheMelden() {
+    try { MIX.hoehe(global, Math.ceil(huelle.offsetTop + huelle.offsetHeight + 4)); } catch (e) {}
+  }
+  try { new ResizeObserver(hoeheMelden).observe(huelle); }
+  catch (e) { setInterval(hoeheMelden, 400); }
+
+  function finde(id) {
+    for (var i = 0; i < alleItems.length; i++) if (alleItems[i].id === id) return alleItems[i];
+    return null;
+  }
+  try {
+    MIX.bereit(global, {
+      id: K.id,
+      titel: document.title || K.id,
+      kandidaten: function () {
+        var st = Store.load(), heute = heuteStr();
+        return alleItems.map(function (it) {
+          var e = st.items[it.id];
+          return { id: it.id, art: it.art, neu: !e,
+                   faellig: !!e && istFaellig(e, heute),
+                   wackler: !!e && e.letzter === "sassNicht" };
+        });
+      },
+      zeigen: function (id, modus, fertig) {
+        var it = finde(id);
+        if (!it) return false;
+        mixModus = modus === "klausur" ? "klausur" : "ueben";
+        mixRueckruf = fertig;
+        jetzt = variantePraegen(it);
+        var e = Store.load().items[it.id];
+        warWackler = !!e && e.letzter === "sassNicht";
+        geprueft = false; wahl = null;
+        aufgabeZeichnen(jetzt);
+        return true;
+      },
+      buchen: function (id, richtig) {
+        var it = finde(id);
+        if (!it) return;
+        var e = Store.load().items[it.id];
+        warWackler = !!e && e.letzter === "sassNicht";
+        buchen(it, !!richtig);
+      },
+      leeren: function () { $("lkHaupt").innerHTML = ""; jetzt = null; mixRueckruf = null; }
+    });
+  } catch (e) {}
+}
+
+function klausurLaeuft() { return !!MIX && mixModus === "klausur"; }
+
+function mixZurueck(ergebnis) {
+  var cb = mixRueckruf;
+  mixRueckruf = null;
+  if (typeof cb === "function") cb(ergebnis);
+}
+
+/* Probeklausur: Antwort festhalten, still auswerten, keine Loesung zeigen. */
+function klausurAbgeben() {
+  if (geprueft || !jetzt) return;
+  geprueft = true;
+  var it = jetzt, art = ARTEN[it.art];
+  var du = antwortLesen(it);
+  var erg;
+  try { erg = art.pruefen(it, $("lkKoerper")) || {}; } catch (e) { erg = { richtig: false }; }
+  var ok = erg.richtig === null || erg.richtig === undefined ? null : !!erg.richtig;
+  if (it.art === "svg") du = du ? (ok ? klartext(it.ziel) : "andere Stelle") : "";
+  var frage = frageFesthalten(it);
+  $("lkHaupt").innerHTML = "";
+  jetzt = null;
+  mixZurueck({ id: it.id, frage: frage, du: du,
+               loesung: loesungHtml(it, erg), ok: ok, merke: it.merke || "" });
+}
+
+/* Steckt in der Frage eine Zeichnung (z. B. eine Strukturformel), haengt ihr
+   Aussehen am CSS der Seite. Fuer die Auswertungstabelle der Huelle werden die
+   wichtigsten Stilwerte darum direkt an die Elemente geschrieben. */
+function frageFesthalten(it) {
+  var el = document.querySelector("#lkHaupt .card > .frage");
+  if (!el || !el.querySelector("svg")) return frageHtml(it);
+  try {
+    var kopie = el.cloneNode(true);
+    var alt = el.querySelectorAll("svg, svg *"), neu = kopie.querySelectorAll("svg, svg *");
+    var EIG = ["fill", "stroke", "stroke-width", "stroke-dasharray", "stroke-linecap",
+               "opacity", "font-size", "font-weight", "font-family", "font-style",
+               "text-anchor", "dominant-baseline", "color"];
+    for (var i = 0; i < alt.length && i < neu.length; i++) {
+      var cs = getComputedStyle(alt[i]);
+      neu[i].setAttribute("style", EIG.map(function (p) {
+        return p + ":" + cs.getPropertyValue(p);
+      }).join(";"));
+    }
+    return frageHtml(it, kopie.innerHTML);
+  } catch (e) { return frageHtml(it); }
+}
+
+function frageHtml(it, basis) {
+  var f = basis !== undefined ? basis : (it.frage || "");
+  if (it.art === "svg" && !klartext(f)) f = "Klick auf: " + (it.ziel || "");
+  if (it.art === "tabelle" && it.kopf) f = (f ? f + " — " : "") + "<b>" + it.kopf + "</b>";
+  return f;
+}
+
+function spaltenname(it, n) {
+  var def = (K.tabellen || {})[it.tabelle] || { spalten: [] };
+  return klartext((def.spalten || [])[n] || ("Spalte " + (n + 1)));
+}
+
+/* Was er eingegeben hat — immer als reiner Text. */
+function antwortLesen(it) {
+  function wert(id) { var el = $(id); return el ? String(el.value || "").trim() : ""; }
+  if (it.art === "karte") return wert("lkAntwort");
+  if (it.art === "rechnung") {
+    var felder = it.felder || [];
+    return felder.map(function (f, n) {
+      var v = wert("lkFeld" + n);
+      return felder.length > 1 ? klartext(f.label || "Ergebnis") + ": " + (v || "—") : v;
+    }).join(" · ");
+  }
+  if (it.art === "tabelle") {
+    return (it.zellen || []).map(function (z, n) {
+      return spaltenname(it, n) + ": " + (wert("lkZelle" + n) || "—");
+    }).join(" · ");
+  }
+  if (it.art === "wahl") { var l = $("lkWahl"); return l ? klartext(l.dataset.gewaehlt || "") : ""; }
+  if (it.art === "svg")  { var b = $("lkBuehne"); return b ? (b.dataset.geklickt || "") : ""; }
+  return "";
+}
+
+/* Die richtige Antwort — HTML der Seite selbst. */
+function loesungHtml(it, erg) {
+  if (it.art === "karte") return it.antwort || "";
+  if (it.art === "rechnung") return erg.text || "";
+  if (it.art === "svg") return it.ziel || "";
+  if (it.art === "tabelle") {
+    return (it.zellen || []).map(function (z, n) {
+      return spaltenname(it, n) + ": " + z.loesung;
+    }).join(" · ");
+  }
+  if (it.art === "wahl") return String(it.loesung == null ? "" : it.loesung);
+  return "";
+}
+
+/* ------------------------------------------------------------
+   Melden: stimmt an einer Aufgabe etwas nicht, landet ein Eintrag
+   in der Meldeliste der App. Wer die Seite baut, arbeitet sie ab.
+   ------------------------------------------------------------ */
+function meldenGeht() {
+  if (MIX) return typeof MIX.melden === "function";
+  return !!(global.Lernkiste && typeof global.Lernkiste.melden === "function");
+}
+
+function meldenOeffnen() {
+  var box = $("lkMeldung");
+  if (!box || !jetzt) return;
+  if (box.style.display !== "none") { box.style.display = "none"; return; }
+  var it = jetzt;
+  box.innerHTML =
+      '<input type="text" id="lkMeldText" maxlength="500" autocomplete="off" '
+    +   'placeholder="Was stimmt nicht? (optional)">'
+    + '<button type="button" class="primary" id="btnMeldSenden">Melden</button>'
+    + '<button type="button" class="ghost" id="btnMeldWeg">Abbrechen</button>';
+  box.style.display = "";
+  var feld = $("lkMeldText");
+
+  function senden() {
+    var pfad = "";
+    try { pfad = decodeURIComponent(location.pathname.replace(/^\/seite\//, "")); } catch (e) {}
+    var eintrag = {
+      datum: jetztStr(), seite: K.id, version: K.version, pfad: pfad,
+      titel: document.title || K.id, item: it.id, variante: it.variante || null,
+      art: it.art, frage: klartext(frageHtml(it)).slice(0, 300),
+      text: String(feld.value || "").trim().slice(0, 500), erledigt: false
+    };
+    try {
+      if (MIX) MIX.melden(eintrag); else global.Lernkiste.melden(eintrag);
+      box.innerHTML = '<span class="lk-gemeldet">⚑ Gemeldet — die Aufgabe wird beim nächsten Durchsehen geprüft.</span>';
+      var k = $("btnMelden"); if (k) k.disabled = true;
+    } catch (e) {
+      box.innerHTML = '<span class="lk-gemeldet">Melden hat nicht geklappt.</span>';
+    }
+  }
+  feld.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter" && !ev.isComposing) { ev.preventDefault(); ev.stopPropagation(); senden(); }
+    else if (ev.key === "Escape") { ev.stopPropagation(); box.style.display = "none"; }
+  });
+  $("btnMeldSenden").addEventListener("click", senden);
+  $("btnMeldWeg").addEventListener("click", function () { box.style.display = "none"; });
+  feld.focus({ preventScroll: true });
+}
+
+/* ------------------------------------------------------------
    Auswahl und Reihenfolge
    ------------------------------------------------------------ */
 function auswahlBauen() {
@@ -568,16 +867,18 @@ function auswahlBauen() {
 }
 
 function schlangeFuellen() {
-  var s = Store.load();
-  var doppelt = [];
+  var s = Store.load(), heute = heuteStr();
+  /* Erst was heute faellig ist, dann Neues, dann der Rest. */
+  var faellig = [], neu = [], rest = [];
   aktiv.forEach(function (it) {
-    doppelt.push(it);
     var e = s.items[it.id];
+    var topf = !e ? neu : istFaellig(e, heute) ? faellig : rest;
+    topf.push(it);
     /* Wackelkandidaten kommen in einer Runde zweimal dran — sie sind ja der Grund,
        warum man ueberhaupt nochmal uebt. */
-    if (e && e.letzter === "sassNicht") doppelt.push(it);
+    if (e && e.letzter === "sassNicht") topf.push(it);
   });
-  schlange = shuffle(doppelt);
+  schlange = shuffle(faellig).concat(shuffle(neu), shuffle(rest));
   /* Nicht dasselbe Item zweimal hintereinander. */
   if (jetzt && schlange.length > 1 && schlange[0].id === jetzt.id) {
     var t = schlange[0]; schlange[0] = schlange[1]; schlange[1] = t;
@@ -613,13 +914,14 @@ function naechstesItem() {
    Kopfzeile
    ------------------------------------------------------------ */
 function kopfZeichnen() {
-  var s = Store.load();
-  var sitzen = 0, wackler = 0;
+  var s = Store.load(), heute = heuteStr();
+  var sitzen = 0, wackler = 0, faellig = 0;
   alleItems.forEach(function (it) {
     var e = s.items[it.id];
     if (!e) return;
     if (e.letzter === "sass") sitzen++;
     if (e.letzter === "sassNicht") wackler++;
+    if (istFaellig(e, heute)) faellig++;
   });
   var tp = s.tagespensum;
   var quote = tp.geschafft ? Math.round(100 * tp.treffer / tp.geschafft) : 0;
@@ -628,6 +930,7 @@ function kopfZeichnen() {
   $("lkStats").innerHTML =
       "Heute geschafft <b>" + tp.geschafft + " / " + tp.ziel + "</b>"
     + "<span>Trefferquote <b>" + quote + " %</b></span>"
+    + '<span title="Aufgaben, deren Wiederholung heute ansteht">Fällig heute: <b>' + faellig + "</b></span>"
     + "<span>Sitzt: <b>" + sitzen + " / " + alleItems.length + "</b></span>"
     + "<span>Wackelkandidaten: <b>" + wackler + "</b></span>"
     + (nachholen ? '<span class="lk-nachholen">Vor dem Ziel noch festigen: <b>' + nachholen + "</b></span>" : "");
@@ -762,10 +1065,14 @@ function aufgabeZeichnen(it) {
     +     '<button class="ok-btn" id="btnSass">saß</button>'
     +     '<button class="no-btn" id="btnSassNicht">saß nicht</button>'
     +   "</div>"
+    +   (meldenGeht() ? '<button type="button" class="ghost lk-melden-knopf" id="btnMelden" '
+                      + 'title="Stimmt an dieser Aufgabe etwas nicht? Kurz melden.">⚑ Melden</button>' : "")
     +   '<div style="flex:1"></div>'
-    +   '<button class="primary" id="btnPruefen">' + (it.art === "karte" ? "Aufdecken" : "Prüfen") + "</button>"
+    +   '<button class="primary" id="btnPruefen">'
+    +     (klausurLaeuft() ? "Weiter" : it.art === "karte" ? "Aufdecken" : "Prüfen") + "</button>"
     +   '<button class="primary" id="btnWeiter" style="display:none;">Weiter</button>'
-    + "</div>";
+    + "</div>"
+    + '<div class="lk-meldung no-print" id="lkMeldung" style="display:none;"></div>';
 
   var haupt = $("lkHaupt");
   haupt.innerHTML = "";
@@ -774,20 +1081,21 @@ function aufgabeZeichnen(it) {
   ARTEN[it.art].zeichnen(it, $("lkKoerper"));
   /* Beim Schema gibt der Klick auf das Bild die Antwort. Waere der Pruefen-Knopf
      da, wuerde Enter die Aufgabe sofort als falsch abhaken, bevor er ueberhaupt
-     geklickt hat. */
-  if (ARTEN[it.art].direkt) $("btnPruefen").style.display = "none";
+     geklickt hat. In der Probeklausur waehlt der Klick nur aus. */
+  if (ARTEN[it.art].direkt && !klausurLaeuft()) $("btnPruefen").style.display = "none";
 
   $("btnPruefen").addEventListener("click", pruefen);
   $("btnWeiter").addEventListener("click", weiter);
   $("btnSass").addEventListener("click", function () { selbst("sass"); });
   $("btnSassNicht").addEventListener("click", function () { selbst("sassNicht"); });
+  if ($("btnMelden")) $("btnMelden").addEventListener("click", meldenOeffnen);
 
   /* Fokus nur, wenn das Feld schon ganz im Bild ist. WebKit (die Engine der
      App) holt den Cursor eines fokussierten Feldes kurz darauf trotz
      preventScroll ins Bild — bei grossen Bildern oder dem Heute-Kasten
      sprang die Seite so nach unten und die Frage oben war weg. Liegt das
      Feld tiefer, bekommt es den Fokus erst beim ersten Tippen. */
-  var erstes = haupt.querySelector("input");
+  var erstes = $("lkKoerper").querySelector("input, textarea");
   if (erstes && ganzImBild(erstes)) erstes.focus({ preventScroll: true });
   scrollHalten();
 }
@@ -830,13 +1138,14 @@ function tippenUmleiten() {
     if (ziel && (ziel.tagName === "INPUT" || ziel.tagName === "TEXTAREA"
                  || ziel.tagName === "SELECT" || ziel.isContentEditable)) return;
     if (geprueft) return;
-    var feld = document.querySelector("#lkHaupt input:not([disabled])");
+    var feld = document.querySelector("#lkKoerper input:not([disabled]), #lkKoerper textarea:not([disabled])");
     if (feld) feld.focus();
   });
 }
 
 function pruefen() {
   if (geprueft || !jetzt) return;
+  if (klausurLaeuft()) { klausurAbgeben(); return; }
   var art = ARTEN[jetzt.art];
   var ergebnis = art.pruefen(jetzt, $("lkKoerper"));
   geprueft = true;
@@ -880,16 +1189,37 @@ function markiereWahl() {
 function weiter() {
   if (!geprueft || !jetzt || !wahl) return;
   buchen(jetzt, wahl === "sass");
+  if (MIX) {
+    var r = { id: jetzt.id, ok: wahl === "sass" };
+    $("lkHaupt").innerHTML = "";
+    jetzt = null;
+    mixZurueck(r);
+    return;
+  }
   kopfZeichnen();
   weiterMachen();
 }
 
 function buchen(it, richtig) {
-  var s = Store.load();
+  var s = Store.load(), heute = heuteStr();
   var e = s.items[it.id] || { sass: 0, sassNicht: 0, letzter: "", zuletzt: "" };
+  /* Leiter: nur wer faellig (oder neu) ist, steigt. Wer vorzeitig richtig
+     liegt, behaelt seinen Termin; ein Fehler setzt immer zurueck. */
+  var vorher = faelligkeit(e);
+  if (!richtig) {
+    e.stufe = 0;
+    e.faellig = deckeln(datumPlus(heute, 1));
+  } else if (vorher === null || vorher <= heute) {
+    var st = Math.min(stufeVon(e), LEITER.length - 1);
+    e.faellig = deckeln(datumPlus(heute, LEITER[st]));
+    e.stufe = Math.min(st + 1, LEITER.length - 1);
+  } else if (!e.faellig) {
+    e.faellig = vorher;
+    e.stufe = stufeVon(e);
+  }
   if (richtig) e.sass++; else e.sassNicht++;
   e.letzter = richtig ? "sass" : "sassNicht";
-  e.zuletzt = heuteStr();
+  e.zuletzt = heute;
   s.items[it.id] = e;
   s.gesamt = alleItems.length;
   s.tagespensum.geschafft++;
@@ -972,6 +1302,18 @@ var ARTEN = {};
 ARTEN.karte = {
   zeichnen: function (it, wo) {
     wo.innerHTML = it.hinweis ? '<div class="hinweis-klein">' + it.hinweis + "</div>" : "";
+    /* Probeklausur: er schreibt seine Antwort auf und vergleicht erst am Ende. */
+    if (klausurLaeuft()) {
+      var feld = document.createElement("textarea");
+      feld.id = "lkAntwort";
+      feld.className = "lk-antwort";
+      feld.rows = 3;
+      feld.placeholder = "Deine Antwort … (Enter = weiter, Umschalt+Enter = neue Zeile)";
+      feld.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); pruefen(); }
+      });
+      wo.appendChild(feld);
+    }
   },
   pruefen: function (it, wo) {
     wo.innerHTML = '<div class="begruendung"><b>Antwort:</b> ' + (it.antwort || "") + "</div>"
@@ -1055,6 +1397,11 @@ ARTEN.svg = {
       el.addEventListener("click", function () {
         if (geprueft) return;
         buehne.dataset.geklickt = el.getAttribute("data-teil");
+        if (klausurLaeuft()) {
+          buehne.querySelectorAll(".teil-gewaehlt").forEach(function (x) { x.classList.remove("teil-gewaehlt"); });
+          el.classList.add("teil-gewaehlt");
+          return;
+        }
         pruefen();
       });
     });
@@ -1178,6 +1525,8 @@ ARTEN.wahl = {
 /* ------------------------------------------------------------ */
 global.Lernseite = {
   start: start, heuteStr: heuteStr, shuffle: shuffle,
+  /* Fuer die Startseite: wann ein gespeicherter Eintrag wieder dran ist. */
+  faelligkeit: faelligkeit, istFaellig: istFaellig, LEITER: LEITER.slice(),
   /* Fuer Agenten und Tests: liefert die Baufehler als Liste, leer = alles gut. */
   pruefen: function () { return K ? bauplanPruefen() : ["Lernseite.start wurde nie aufgerufen."]; }
 };

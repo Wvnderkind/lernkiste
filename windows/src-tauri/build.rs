@@ -32,6 +32,8 @@ fn main() {
             "neuigkeiten",
             "neuigkeiten_gelesen",
             "anleitung_ausblenden",
+            "sichern_mix",
+            "melden",
         ]),
     ))
     .expect("tauri-build")

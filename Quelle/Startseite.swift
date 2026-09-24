@@ -73,6 +73,21 @@ enum Startseite {
         .klein .titel{font-weight:500;font-size:13px}
         .klein .fach{font-size:10.5px;color:var(--text-dim);margin-top:3px;
                      text-transform:uppercase;letter-spacing:.6px}
+        .fachuebung{display:grid;gap:10px}
+        .fachuebung .karte{cursor:default}
+        .fachuebung .karte:hover{transform:none;border-color:var(--line)}
+        .fachuebung .zahlen{font-size:12.5px;color:var(--text-dim);margin-top:4px}
+        .fachuebung .zahlen b{color:var(--text)}
+        .fachuebung .knoepfe{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+        .fachuebung .knoepfe a{font-size:12.5px;font-weight:600;text-decoration:none;
+              padding:5px 11px;border-radius:7px;border:1px solid var(--line);
+              color:var(--text);background:var(--surface-2)}
+        .fachuebung .knoepfe a:hover{border-color:var(--accent);color:var(--accent)}
+        .fachuebung .knoepfe a.an{background:var(--accent);border-color:var(--accent);color:#fff}
+        .fachuebung .knoepfe a.aus{opacity:.4;pointer-events:none}
+        .meldehinweis{font-size:12.5px;color:var(--text-dim);background:var(--surface);
+              border:1px dashed var(--line);border-radius:9px;padding:10px 13px;margin-top:10px}
+        .meldehinweis b{color:var(--no)}
         .fuss{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);
               color:var(--text-dim);font-size:11.5px}
         </style></head><body><div class="huelle">
@@ -128,6 +143,9 @@ enum Startseite {
             """
         }
 
+        // ---- Fehlerkiste und Probeklausur je Fach ----
+        html += fachUebung(faecher)
+
         // ---- Wackelkandidaten ----
         let wacklig = alle.compactMap { seite -> (Seite, SeitenStand)? in
             guard let s = staende[seite.id], s.wackel > 0 else { return nil }
@@ -181,6 +199,96 @@ enum Startseite {
         </div></body></html>
         """
         return html
+    }
+
+    // MARK: - Fehlerkiste und Probeklausur
+
+    /// Seiten, die den gemeinsamen Motor benutzen — nur die koennen in der
+    /// Fehlerkiste und der Probeklausur mitlaufen.
+    private static func mitMotor(_ seite: Seite) -> Bool {
+        guard let h = FileHandle(forReadingAtPath: seite.datei.path) else { return false }
+        defer { try? h.close() }
+        let anfang = (try? h.read(upToCount: 16 * 1024)) ?? Data()
+        return String(decoding: anfang, as: UTF8.self).contains("_motor/lernkiste.js")
+    }
+
+    /// Je Fach: was heute faellig ist, wie viele Wackler es gibt, und der Weg
+    /// zur Probeklausur. Gezaehlt wird im Browser aus dem gespeicherten Stand
+    /// (derselbe Speicher, den die Seiten selbst benutzen).
+    private static func fachUebung(_ faecher: [Fach]) -> String {
+        struct Eintrag: Encodable { let id: String; let v: Int; let p: String }
+        struct FachEintrag: Encodable { let name: String; let seiten: [Eintrag] }
+        let liste: [FachEintrag] = faecher.filter { !$0.archiv }.compactMap { fach in
+            let seiten = fach.alleSeiten.filter(mitMotor)
+                .map { Eintrag(id: $0.id, v: $0.version, p: $0.relativerPfad) }
+            return seiten.isEmpty ? nil : FachEintrag(name: fach.name, seiten: seiten)
+        }
+        let offen = Meldungen.offen
+        guard !liste.isEmpty || offen > 0 else { return "" }
+
+        var h = "<h2>Fehlerkiste &amp; Probeklausur</h2><div class=\"fachuebung\">"
+        for (n, fach) in liste.enumerated() {
+            h += """
+            <div class="karte" id="fu\(n)">
+              <div class="zeile"><div class="titel">\(esc(fach.name))</div>
+              <span class="marke m-ruht">\(fach.seiten.count) \(fach.seiten.count == 1 ? "Seite" : "Seiten")</span></div>
+              <div class="zahlen">Heute fällig: <b class="nf">–</b> · Wackler: <b class="nw">–</b></div>
+              <div class="knoepfe">
+                <a class="kf aus" href="#">Fällige üben</a>
+                <a class="kw aus" href="#">Wackler üben</a>
+                <a class="kk" href="#">Probeklausur</a>
+              </div>
+            </div>
+            """
+        }
+        h += "</div>"
+        if offen > 0 {
+            h += """
+            <div class="meldehinweis">⚑ <b>\(offen) \(offen == 1 ? "Meldung" : "Meldungen") offen</b> —
+            gemeldete Aufgaben stehen in <code>meldungen.json</code> im Lernkiste-Ordner.
+            In Claude Code genügt: „schau die Meldungen durch“.</div>
+            """
+        }
+        let daten = (try? JSONEncoder().encode(liste)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        h += """
+        <script src="/res/lernkiste.js"></script>
+        <script>
+        (function(){
+          var F = \(daten.replacingOccurrences(of: "</", with: "<\\/"));
+          function adresse(modus, fach, pfade){
+            return "/mix?modus=" + modus + "&titel=" + encodeURIComponent(fach)
+              + pfade.map(function(p){ return "&p=" + encodeURIComponent(p); }).join("");
+          }
+          var LS = window.Lernseite || {};
+          F.forEach(function(f, n){
+            var box = document.getElementById("fu" + n);
+            if (!box) return;
+            var faellig = 0, wackler = 0, mitF = [], mitW = [];
+            f.seiten.forEach(function(s){
+              var o = null;
+              try { o = JSON.parse(localStorage.getItem("lern:" + s.id + "@v" + s.v) || "null"); } catch(e){}
+              var items = (o && o.items) || {}, nf = 0, nw = 0;
+              for (var k in items) {
+                var e = items[k];
+                if (LS.istFaellig && LS.istFaellig(e)) nf++;
+                if (e && e.letzter === "sassNicht") nw++;
+              }
+              faellig += nf; wackler += nw;
+              if (nf) mitF.push(s.p);
+              if (nw) mitW.push(s.p);
+            });
+            box.querySelector(".nf").textContent = faellig
+              + (faellig ? " aus " + mitF.length + (mitF.length === 1 ? " Seite" : " Seiten") : "");
+            box.querySelector(".nw").textContent = wackler;
+            var kf = box.querySelector(".kf"), kw = box.querySelector(".kw"), kk = box.querySelector(".kk");
+            if (faellig) { kf.className = "kf an"; kf.href = adresse("faellig", f.name, mitF); }
+            if (wackler) { kw.className = "kw"; kw.href = adresse("wackler", f.name, mitW); }
+            kk.href = adresse("klausur", f.name, f.seiten.map(function(s){ return s.p; }));
+          });
+        })();
+        </script>
+        """
+        return h
     }
 
     // MARK: - Bausteine

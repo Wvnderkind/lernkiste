@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sichern-mix"
+description = "Enables the sichern_mix command without any pre-configured scope."
+commands.allow = ["sichern_mix"]
+
+[[permission]]
+identifier = "deny-sichern-mix"
+description = "Denies the sichern_mix command without any pre-configured scope."
+commands.deny = ["sichern_mix"]

@@ -35,6 +35,7 @@
   var ARCHIV = 'Fürs Physikum';
   var daten = { faecher: [], erledigt: [], favoriten: [], zuletzt: [], theme: 'dark' };
   var aktuell = null;          // offene Seite, null = Startseite
+  var mix = null;              // laufende Fehlerkiste/Probeklausur: {titel, fach, seiten}
   var suchtext = '';
   var offen = {};              // Schluessel → aufgeklappt?
 
@@ -237,6 +238,10 @@
       sternEl.hidden = false;
       var an = istFavorit(aktuell.id);
       sternEl.classList.toggle('an', an);
+    } else if (mix) {
+      $('titel').textContent = mix.titel;
+      $('unter').textContent = mix.fach || 'Übersicht';
+      sternEl.hidden = true;
     } else {
       $('titel').textContent = 'Lernkiste';
       $('unter').textContent = 'Übersicht';
@@ -260,6 +265,7 @@
 
   function oeffnen(seite) {
     return sichern().then(function () {
+      mix = null;
       aktuell = seite;
       invoke('seite_besucht', { id: seite.id }).catch(function () {});
       rahmen.src = adresse(seite);
@@ -277,6 +283,7 @@
 
   function startseite() {
     return sichern().then(function () {
+      mix = null;
       aktuell = null;
       rahmen.src = '/start';
       kopfSetzen();
@@ -289,7 +296,25 @@
   function rahmenGeladen() {
     var pfad = '';
     try { pfad = rahmen.contentWindow.location.pathname; } catch (e) {}
-    if (pfad.indexOf('/seite/') === 0) {
+    // Aus einer Fehlerkiste/Probeklausur heraus: deren Seiten noch sichern.
+    if (mix && pfad !== '/mix') {
+      var alte = mix;
+      mix = null;
+      mixSichern(alte.seiten);
+      kopfSetzen();
+    }
+    if (pfad === '/mix') {
+      var q = new URLSearchParams(rahmen.contentWindow.location.search);
+      var pfade = q.getAll('p'), modus = q.get('modus');
+      aktuell = null;
+      mix = {
+        titel: modus === 'klausur' ? 'Probeklausur' : modus === 'wackler' ? 'Wackelkandidaten' : 'Heute fällig',
+        fach: q.get('titel') || '',
+        seiten: alleSeiten().filter(function (x) { return pfade.indexOf(x.relativerPfad) >= 0; })
+      };
+      kopfSetzen();
+      markieren();
+    } else if (pfad.indexOf('/seite/') === 0) {
       var rel = pfad.slice(7).split('/').map(function (t) {
         try { return decodeURIComponent(t); } catch (e) { return t; }
       }).join('/');
@@ -314,16 +339,28 @@
 
   var sichernLaeuft = null;
   // Liest alle "lern:"-Eintraege und laesst sie als Datei ablegen.
-  function sichern() {
-    if (!aktuell) return Promise.resolve();
-    var seite = aktuell;
+  function lernRoh() {
     var roh = {};
-    try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        if (k && k.indexOf('lern:') === 0) roh[k] = localStorage.getItem(k);
-      }
-    } catch (e) { return Promise.resolve(); }
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf('lern:') === 0) roh[k] = localStorage.getItem(k);
+    }
+    return roh;
+  }
+  // Nach einer Mischung: alle beteiligten Seiten auf einmal ablegen.
+  function mixSichern(seiten) {
+    var roh;
+    try { roh = lernRoh(); } catch (e) { return Promise.resolve(); }
+    return invoke('sichern_mix', { ids: seiten.map(function (s) { return s.id; }), roh: roh })
+      .then(function () { return laden(false); })
+      .then(function () { baumBauen(); })
+      .catch(function () {});
+  }
+  function sichern() {
+    if (!aktuell) return mix ? mixSichern(mix.seiten) : Promise.resolve();
+    var seite = aktuell;
+    var roh;
+    try { roh = lernRoh(); } catch (e) { return Promise.resolve(); }
     var auftrag = invoke('sichern', { id: seite.id, roh: roh }).then(function (erledigt) {
       var war = istErledigt(seite.id);
       if (erledigt && !war) daten.erledigt.push(seite.id);
@@ -354,7 +391,7 @@
       daten.theme = t;
       themaAnwenden();
       // Die Startseite wird mit ihren Farben gebaut — neu laden.
-      if (!aktuell) rahmen.src = '/start';
+      if (!aktuell && !mix) rahmen.src = '/start';
     });
   }
 
@@ -433,8 +470,11 @@
       case 'scroll': trenner(!n.oben); break;
       case 'extern': if (typeof n.url === 'string') invoke('extern_oeffnen', { url: n.url }).catch(function () {}); break;
       case 'taste': if (typeof n.aktion === 'string') taste(n.aktion); break;
+      case 'melden':
+        if (n.eintrag && typeof n.eintrag === 'object') invoke('melden', { eintrag: n.eintrag }).catch(function () {});
+        break;
       case 'anleitungWeg':
-        invoke('anleitung_ausblenden').then(function () { if (!aktuell) rahmen.src = '/start'; }).catch(function () {});
+        invoke('anleitung_ausblenden').then(function () { if (!aktuell && !mix) rahmen.src = '/start'; }).catch(function () {});
         break;
     }
   });
@@ -671,9 +711,9 @@
         baumBauen();
         kopfSetzen();
       }
-      if (!aktuell && startInhalt !== null) {
+      if (!aktuell && !mix && startInhalt !== null) {
         return fetch('/start', { cache: 'no-store' }).then(function (r) { return r.text(); })
-          .then(function (t) { if (!aktuell && t !== startInhalt) rahmen.src = '/start'; });
+          .then(function (t) { if (!aktuell && !mix && t !== startInhalt) rahmen.src = '/start'; });
       }
     }).catch(function (e) { protokoll('Auffrischen: ' + (e && e.message || e)); });
     neuigkeitenLaden().catch(function () {});

@@ -60,7 +60,8 @@ Inhalt, exakt dieses Format — die App zeigt daraus die Fortschrittsanzeige:
 ```json
 {
   "items": {
-    "item-id": { "sass": 3, "sassNicht": 1, "letzter": "sass", "zuletzt": "2026-09-21" }
+    "item-id": { "sass": 3, "sassNicht": 1, "letzter": "sass", "zuletzt": "2026-09-21",
+                 "stufe": 2, "faellig": "2026-09-28" }
   },
   "gesamt": 30,
   "tagespensum": {
@@ -81,6 +82,12 @@ Inhalt, exakt dieses Format — die App zeigt daraus die Fortschrittsanzeige:
 - **Wackelkandidat** = Item mit `letzter == "sassNicht"`. Die App rechnet das selbst aus
   und zeigt es in der Seitenleiste an — deshalb muss `letzter` bei **jedem** Versuch
   mitgeschrieben werden, nicht nur die Zähler.
+- `stufe` / `faellig` = verteiltes Wiederholen, schreibt der Motor selbst: richtig →
+  eine Stufe höher, die Aufgabe ruht 1 → 3 → 7 → 16 → 35 Tage; falsch → Stufe 0,
+  morgen wieder fällig. Steht in der App ein Prüfungstermin (`Lernkiste.termin`),
+  wird `faellig` auf spätestens den Vortag gedeckelt. Ältere Einträge ohne die
+  Felder bekommen ihr Datum aus `zuletzt` und `letzter`. Eigene Seiten ohne Motor
+  dürfen die Felder weglassen.
 - Eigene Zusatzschlüssel sind erlaubt, müssen aber mit `lern:<id>@` beginnen.
 
 **Kein Export-Knopf mehr.** Die App liest den Schlüssel automatisch aus und legt den
@@ -216,6 +223,8 @@ Nur vorhanden, wenn die Seite in der App läuft. **Immer** auf Existenz prüfen.
 | `Lernkiste.fertig(ergebnis)` | meldet „Tagespensum geschafft" an die App (Startseite hakt ab) |
 | `Lernkiste.theme` | `'dark'` \| `'light'` |
 | `Lernkiste.gif(id, anlass)` | Pfad zu einem Glückwunsch-GIF oder `null` |
+| `Lernkiste.termin` | nächster Prüfungstermin `"JJJJ-MM-TT"` aus `konfiguration.json` (`naechsterTermin.datum`) oder `null` |
+| `Lernkiste.melden(eintrag)` | hängt eine Meldung an `meldungen.json` an (siehe Kapitel 8, „Melden") |
 
 Fortschritt muss **nicht** aktiv gemeldet werden — die App liest localStorage selbst aus.
 
@@ -408,6 +417,45 @@ Alles, was die Seite sonst noch in `<body>` schreibt (Merkkästen `.box.merksatz
 Jeder Kasten mit einem `.box-title` als Kind lässt sich über den Titel zuklappen;
 der Motor merkt sich zugeklappte Kästen je Seite (nach Titeltext), auch den
 „★ Heute"-Kasten. `<details>`-Kästen (z. B. ein Spickzettel) bleiben unverändert.
+
+### Fälligkeit, Fehlerkiste, Probeklausur
+
+Der Motor bevorzugt beim Ziehen, was heute fällig ist (Kapitel 2, `faellig`);
+der Fortschrittsblock nennt „Fällig heute: N". Auf der Startseite steht je Fach eine
+Kachel „Fehlerkiste & Probeklausur" mit „Heute fällig: N aus M Seiten" und
+„Wackler: N". Die Knöpfe öffnen `/mix?modus=faellig|wackler|klausur&titel=<Fach>&p=<Pfad>…`
+— eine Hülle (`Ressourcen/mix.html`), die die beteiligten Seiten unsichtbar mit
+`?mix=1` lädt und ihre Aufgaben mischt:
+
+- **Fällige üben / Wackler üben:** quer durch alle Seiten des Fachs; Falsches
+  kommt in derselben Runde bis zu zweimal wieder.
+- **Probeklausur:** 20 / 40 / 60 Aufgaben (oder alle, wenn es weniger sind),
+  Uhr wahlweise (1,5 min je Aufgabe). Lösungen erst am Ende als Tabelle
+  F | Du | Richtig | ✅/❌; Karteikarten bekommen ein Textfeld und werden am
+  Ende selbst mit ✓/✗ bewertet. Erst „Ergebnis speichern" bucht alles in den
+  Fortschritt der einzelnen Seiten.
+
+Das funktioniert mit **jeder** Motor-Seite, ohne dass sie etwas dafür tun muss.
+Voraussetzung: die Aufgabe steckt vollständig in `bauen`/`items` (keine
+Zusatz-Logik außerhalb des Motors) und eine `svg`-Frage kommt ohne Seiten-CSS
+aus, das nur per Klasse greift — für die Ergebnistabelle werden die sichtbaren
+Stile eingefroren.
+
+### Melden
+
+Unter jeder Aufgabe steht „⚑ Melden" (nur in der App). Ein optionaler Satz
+genügt; der Eintrag landet in `~/Documents/Lernkiste/meldungen.json`:
+
+```json
+{ "datum": "…", "seite": "<id>", "version": 1, "pfad": "<Fach>/<Thema>/<datei>.html",
+  "titel": "…", "item": "<item-id>", "variante": null, "art": "eingabe",
+  "frage": "Klartext der Frage", "text": "Was stimmt nicht", "erledigt": false }
+```
+
+Die Startseite zeigt „⚑ N Meldungen offen". **Abarbeiten:** Seite unter `pfad`
+öffnen, die Aufgabe `item` prüfen und korrigieren (bei inhaltlicher Änderung
+`version` **nicht** erhöhen, solange die Item-IDs bleiben), danach den Eintrag
+auf `"erledigt": true` setzen — nicht löschen.
 
 ### Selbstprüfung
 

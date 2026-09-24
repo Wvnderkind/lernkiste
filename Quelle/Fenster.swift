@@ -148,6 +148,9 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     private var wurzel: [Knoten] = []
     private var suchtext = ""
     private var aktuelleSeite: Seite?
+    /// Offene Fehlerkiste bzw. Probeklausur (/mix): alle Seiten, die darin
+    /// mitlaufen. Deren Stand wird beim Sichern mit abgelegt.
+    private var mixSeiten: [Seite]?
 
     /// Was er in der Leiste selbst auf- oder zugeklappt hat (true = offen).
     /// Liegt in den Einstellungen der App und ueberlebt so den Neustart.
@@ -535,7 +538,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
             standardAufklappen()
             auswahlAngleichen()
         }
-        if aktuelleSeite == nil {
+        if aktuelleSeite == nil, mixSeiten == nil {
             let html = startseiteBauen()
             if html != gezeigteStartseite {
                 gezeigteStartseite = html
@@ -658,6 +661,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     @objc private func startseiteZeigen() {
         fortschrittSichern()
         aktuelleSeite = nil
+        mixSeiten = nil
         staende = Fortschritt.alleStaende()
         titelLabel.stringValue = "Lernkiste"
         unterLabel.stringValue = "Übersicht"
@@ -711,6 +715,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     func oeffnen(_ seite: Seite) {
         fortschrittSichern()           // Stand der vorigen Seite retten
         aktuelleSeite = seite
+        mixSeiten = nil
         titelLabel.stringValue = seite.titel
         unterLabel.stringValue = "\(seite.fach) · \(seite.thema)"
         sternKnopf.isHidden = false
@@ -748,7 +753,16 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     /// Wie oben, meldet sich aber, wenn der Stand wirklich auf der Platte liegt —
     /// der Updater wartet darauf, bevor er die App austauscht.
     func fortschrittSichern(dann: (() -> Void)?) {
-        guard let seite = aktuelleSeite else { dann?(); return }
+        if let seite = aktuelleSeite { seitenSichern([seite], geoeffnet: true, dann: dann) }
+        else if let mix = mixSeiten { seitenSichern(mix, geoeffnet: false, dann: dann) }
+        else { dann?() }
+    }
+
+    /// Alle Seiten teilen sich einen localStorage — darum laesst sich der Stand
+    /// jeder Seite von jeder Seite aus lesen. `geoeffnet: false` (Fehlerkiste,
+    /// Probeklausur) laesst „zuletzt geoeffnet" unangetastet.
+    private func seitenSichern(_ seiten: [Seite], geoeffnet: Bool, dann: (() -> Void)?) {
+        guard !seiten.isEmpty else { dann?(); return }
         let js = """
         (function(){var o={};for(var i=0;i<localStorage.length;i++){
         var k=localStorage.key(i);if(k&&k.indexOf('lern:')===0)o[k]=localStorage.getItem(k);}
@@ -759,11 +773,19 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
                   let daten = text.data(using: .utf8),
                   let roh = try? JSONDecoder().decode([String: String].self, from: daten)
             else { dann?(); return }
-            let stand = Fortschritt.auswerten(roh: roh, seite: seite)
-            Fortschritt.sichern(stand)
+            var neu: [SeitenStand] = []
+            for seite in seiten {
+                var stand = Fortschritt.auswerten(roh: roh, seite: seite)
+                if !geoeffnet {
+                    if stand.roh.isEmpty { continue }   // nie geuebt — keine leere Datei anlegen
+                    stand.zuletztGeoeffnet = self.staende[seite.id]?.zuletztGeoeffnet
+                }
+                Fortschritt.sichern(stand)
+                neu.append(stand)
+            }
             dann?()
             DispatchQueue.main.async { [weak self] in
-                self?.staende[seite.id] = stand
+                for stand in neu { self?.staende[stand.seite] = stand }
                 self?.liste.reloadData()
                 self?.auswahlAngleichen()
             }
@@ -844,6 +866,13 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         return text
     }
 
+    private func terminJSON() -> String {
+        guard let datum = Konfiguration.laden().naechsterTermin?.datum,
+              datum.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil
+        else { return "null" }
+        return "\"\(datum)\""
+    }
+
     private func bruecke() -> String {
         let planJSON: String = {
             guard let plan, plan.fuerHeute else { return "[]" }
@@ -881,7 +910,12 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
             fertig: function(ergebnis){
               sende({art:"fertig", ergebnis: ergebnis||null});
             },
-            oeffne: function(id){ sende({art:"oeffnen", id:id}); }
+            oeffne: function(id){ sende({art:"oeffnen", id:id}); },
+            /* Naechste Klausur (JJJJ-MM-TT) — die Wiederholungs-Leiter legt davor
+               alles noch einmal hin. */
+            termin: \(terminJSON()),
+            /* Eine Aufgabe ist fehlerhaft: landet in meldungen.json. */
+            melden: function(eintrag){ sende({art:"melden", eintrag: eintrag||null}); }
           };
           // Die Startseite ruft oeffne(...) direkt auf.
           window.oeffne = window.Lernkiste.oeffne;
@@ -905,7 +939,9 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         case "anleitungWeg":
             Zustand.aktuell.anleitungAusgeblendet = true
             Zustand.aktuell.sichern()
-            if aktuelleSeite == nil { startseiteZeigen() }
+            if aktuelleSeite == nil, mixSeiten == nil { startseiteZeigen() }
+        case "melden":
+            if let eintrag = inhalt["eintrag"] as? [String: Any] { Meldungen.anhaengen(eintrag) }
         case "scroll":
             trennerZeigen(!((inhalt["oben"] as? Bool) ?? true))
         default:
@@ -957,9 +993,35 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         themaAnwenden()
         trennerZeigen(false)   // jede Seite faengt oben an
+        mixAngleichen()
         // Kurz warten, bis die Seite ihren Stand geladen/geschrieben hat.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
             self?.fortschrittSichern()
+        }
+    }
+
+    /// Fehlerkiste und Probeklausur laufen unter /mix?…&p=<Pfad>&p=<Pfad>.
+    /// Die Startseite springt per Link dorthin — hier merkt sich das Fenster,
+    /// welche Seiten mitlaufen, und sichert sie beim Verlassen.
+    private func mixAngleichen() {
+        guard let url = web.url else { return }
+        if url.path == "/mix" {
+            let teile = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            let pfade = Set(teile.filter { $0.name == "p" }.compactMap(\.value))
+            mixSeiten = faecher.flatMap(\.alleSeiten).filter { pfade.contains($0.relativerPfad) }
+            let fach = teile.first { $0.name == "titel" }?.value ?? ""
+            let modus = teile.first { $0.name == "modus" }?.value ?? ""
+            titelLabel.stringValue = modus == "klausur" ? "Probeklausur"
+                : modus == "wackler" ? "Wackelkandidaten" : "Heute fällig"
+            unterLabel.stringValue = fach.isEmpty ? "Übersicht" : fach
+        } else if let alte = mixSeiten {
+            mixSeiten = nil
+            seitenSichern(alte, geoeffnet: false, dann: nil)
+            if aktuelleSeite == nil {
+                titelLabel.stringValue = "Lernkiste"
+                unterLabel.stringValue = "Übersicht"
+                gezeigteStartseite = startseiteBauen()
+            }
         }
     }
 
@@ -969,7 +1031,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         Zustand.aktuell.theme = Zustand.aktuell.theme == "dark" ? "light" : "dark"
         Zustand.aktuell.sichern()
         themaAnwenden()
-        if aktuelleSeite == nil { startseiteZeigen() }
+        if aktuelleSeite == nil, mixSeiten == nil { startseiteZeigen() }
     }
 
     private func themaAnwenden() {
@@ -1221,6 +1283,6 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         liste.reloadData()
         standardAufklappen()
         auswahlAngleichen()
-        if aktuelleSeite == nil { startseiteZeigen() }
+        if aktuelleSeite == nil, mixSeiten == nil { startseiteZeigen() }
     }
 }

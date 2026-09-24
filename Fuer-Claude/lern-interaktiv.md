@@ -226,8 +226,20 @@ Lösung, die Merkkästen, und bei `svg` ein Diagramm, das man wirklich lesen kan
 
 ### Brücke zur App — optional, nie Voraussetzung
 Läuft die Seite in der Lernkiste, gibt es `window.Lernkiste` (`version`,
-`tagesplan(id)`, `fertig(ergebnis)`, `theme`, `gif(id, anlass)`). Darum kümmert
-sich der Motor — du rührst das Objekt nicht selbst an.
+`tagesplan(id)`, `fertig(ergebnis)`, `theme`, `gif(id, anlass)`, `termin`,
+`melden(eintrag)`). Darum kümmert sich der Motor — du rührst das Objekt nicht
+selbst an. Fälligkeit, Fehlerkiste und Probeklausur laufen ebenfalls über den
+Motor; damit deine Seite dort mitmischt, gehört **jede** Aufgabe vollständig in
+`bauen`/`items` (siehe SPEC Kapitel 8).
+
+### Meldungen abarbeiten
+Heißt der Auftrag „schau die Meldungen durch", lies `~/Documents/Lernkiste/meldungen.json`.
+Für jeden Eintrag mit `"erledigt": false`: Seite unter `Seiten/<pfad>` öffnen,
+Aufgabe `item` (ggf. `variante`) mit `frage` und `text` prüfen, am Fachinhalt
+belegen und korrigieren — Item-IDs und `version` bleiben, damit der Lernstand
+erhalten bleibt. Danach Qualitätskontrolle wie immer, den Eintrag auf
+`"erledigt": true` setzen (nie löschen) und in der Abschlussmeldung je Meldung
+eine Zeile: was war, was geändert wurde — oder warum die Aufgabe doch stimmt.
 
 ---
 

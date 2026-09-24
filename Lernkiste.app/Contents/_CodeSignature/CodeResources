@@ -18,15 +18,19 @@
 		</data>
 		<key>Resources/lernkiste.css</key>
 		<data>
-		EVJDvK65HtuO4sYHHoNv9XOvvPk=
+		tvapOjMLmPjuKMsq7P9e1ahIfNw=
 		</data>
 		<key>Resources/lernkiste.js</key>
 		<data>
-		UElH/6NA8Zg43E7SroKdiC5ELys=
+		pu+eMJYd1j2gaEa5NCxZHIpBI8k=
+		</data>
+		<key>Resources/mix.html</key>
+		<data>
+		il6OGwjyI6G+oGeayOmkhJbonkk=
 		</data>
 		<key>Resources/neuigkeiten.json</key>
 		<data>
-		3B5zL6JiD9qNq2ChKukEkFDQu68=
+		hiyv0hEBlVAqMoWcZtROauwnss8=
 		</data>
 		<key>Resources/tokens.css</key>
 		<data>
@@ -60,21 +64,28 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			eytUR7EivU4Kz3e9O9mMEheJYoi7ZZlhLeDOOUfedI0=
+			vEwRNc4EvRLnN9nntEwxJq8zwlGhY02bS5mQVN4xXps=
 			</data>
 		</dict>
 		<key>Resources/lernkiste.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			+4n25zrwv6SkM4lkit0l4c2PmB5abS0VybbjbvRQIpA=
+			0mjwiXltqfJSeZlZ8H7aVjHkrUVijE+/2ewzt0GcTg8=
+			</data>
+		</dict>
+		<key>Resources/mix.html</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			AQA2jM6qxXxvPMmDvPKMtqsDw4lkVk6egNQPlOL7mgc=
 			</data>
 		</dict>
 		<key>Resources/neuigkeiten.json</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			CDkVwHFUNhoQVg0yodjtljbbpBlOYCC/inFhY4Q7Bqw=
+			HiXPFyt9ljARn1ppqCd9Z9rRurnAFwMhXTiH2VohpNE=
 			</data>
 		</dict>
 		<key>Resources/tokens.css</key>

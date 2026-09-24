@@ -26,6 +26,7 @@ enum Orte {
     static let tagesplanDatei = daten.appendingPathComponent("tagesplan.json")
     static let konfigDatei   = daten.appendingPathComponent("konfiguration.json")
     static let zustandDatei  = daten.appendingPathComponent("zustand.json")
+    static let meldungenDatei = daten.appendingPathComponent("meldungen.json")
 
     /// Der gemeinsame Motor aller Lernseiten. Er liegt im Programm und wird
     /// hierher gespiegelt, damit jede Seite ihn ueber ../../_motor/ laden kann —
@@ -253,6 +254,37 @@ struct Konfiguration: Codable {
               let k = try? JSONDecoder().decode(Konfiguration.self, from: daten)
         else { return Konfiguration() }
         return k
+    }
+}
+
+// MARK: - Meldungen (fehlerhafte Aufgaben)
+
+/// Sammelliste aller Aufgaben, die als fehlerhaft gemeldet wurden. Wer die
+/// Seiten baut, arbeitet sie ab und setzt dann `erledigt` auf true — geloescht
+/// wird nichts, damit nachvollziehbar bleibt, was schon repariert ist.
+enum Meldungen {
+    static func alle() -> [[String: Any]] {
+        guard let daten = try? Data(contentsOf: Orte.meldungenDatei),
+              let liste = try? JSONSerialization.jsonObject(with: daten) as? [[String: Any]]
+        else { return [] }
+        return liste
+    }
+
+    static var offen: Int {
+        alle().filter { !(($0["erledigt"] as? Bool) ?? false) }.count
+    }
+
+    static func anhaengen(_ eintrag: [String: Any]) {
+        Orte.vorbereiten()
+        var e = eintrag
+        e["erledigt"] = false
+        if e["datum"] == nil { e["datum"] = ISO.jetzt }
+        var liste = alle()
+        liste.append(e)
+        guard let daten = try? JSONSerialization.data(withJSONObject: liste,
+                                                      options: [.prettyPrinted, .sortedKeys])
+        else { return }
+        try? daten.write(to: Orte.meldungenDatei, options: .atomic)
     }
 }
 

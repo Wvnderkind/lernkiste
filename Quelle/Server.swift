@@ -109,6 +109,9 @@ final class Server {
         case pfad == "/" || pfad == "/start":
             return ok(Data(startseiteHTML().utf8), typ: "text/html; charset=utf-8", cachen: false)
 
+        case pfad == "/mix":
+            return datei(relativ: "mix.html", basis: Orte.ressourcen)
+
         case pfad.hasPrefix("/seite/"):
             let relativ = String(pfad.dropFirst("/seite/".count))
             return datei(relativ: relativ, basis: Orte.seiten)

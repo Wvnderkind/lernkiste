@@ -4,7 +4,7 @@
 //! Warum ein Server? Unter http://127.0.0.1:<fester Port> ist der Ursprung
 //! stabil, und localStorage — also der Lernstand — bleibt zuverlaessig erhalten.
 
-use crate::bibliothek::{self, Tagesplan};
+use crate::bibliothek::{self, Konfiguration, Tagesplan};
 use crate::fortschritt;
 use crate::kern::Kern;
 use crate::orte::{self, orte};
@@ -104,6 +104,9 @@ fn antwort_fuer(anfrage: &Request, kern: &Kern, gif_nutzung: &Mutex<Map<String, 
     if pfad == "/" || pfad == "/start" {
         return html(mit_bruecke(&kern.startseite_html(), kern));
     }
+    if pfad == "/mix" {
+        return html(mit_bruecke(orte::MIX_HTML, kern));
+    }
     if let Some(rel) = pfad.strip_prefix("/seite/") {
         let a = datei(rel, &orte().seiten);
         if a.code == 200 && a.typ.starts_with("text/html") {
@@ -186,6 +189,7 @@ fn bruecke_js(kern: &Kern) -> String {
     let theme = kern.theme();
     let eintraege = skript_json(&Tagesplan::roh_eintraege_json());
     let gifs = skript_json(&gifs_json(kern));
+    let termin = termin_json();
     format!(
         r#"(function(){{
   var eintraege = {eintraege};
@@ -194,6 +198,7 @@ fn bruecke_js(kern: &Kern) -> String {
   window.Lernkiste = {{
     version: 1,
     theme: "{theme}",
+    termin: {termin},
     tagesplan: function(id){{
       for (var i=0;i<eintraege.length;i++){{
         if (eintraege[i] && eintraege[i].seite === id) return eintraege[i];
@@ -210,7 +215,8 @@ fn bruecke_js(kern: &Kern) -> String {
       return name ? '/gif/' + a + '/' + encodeURIComponent(name) : null;
     }},
     fertig: function(ergebnis){{ sende({{art:"fertig", ergebnis: ergebnis||null}}); }},
-    oeffne: function(id){{ sende({{art:"oeffnen", id:id}}); }}
+    oeffne: function(id){{ sende({{art:"oeffnen", id:id}}); }},
+    melden: function(eintrag){{ sende({{art:"melden", eintrag: eintrag||null}}); }}
   }};
   window.oeffne = window.Lernkiste.oeffne;
   document.documentElement.dataset.theme = window.Lernkiste.theme;
@@ -270,6 +276,20 @@ fn bruecke_js(kern: &Kern) -> String {
   }}, true);
 }})();"#
     )
+}
+
+/// Naechste Klausur fuer die Faelligkeit (nur mit gueltigem Datum JJJJ-MM-TT),
+/// sonst null — genau wie auf dem Mac.
+fn termin_json() -> String {
+    let Some(t) = Konfiguration::laden().naechster_termin else { return "null".into() };
+    let gueltig = t.datum.len() == 10
+        && t.datum.bytes().enumerate().all(|(i, b)| {
+            if i == 4 || i == 7 { b == b'-' } else { b.is_ascii_digit() }
+        });
+    if !gueltig {
+        return "null".into();
+    }
+    format!("\"{}\"", t.datum)
 }
 
 /// Welche GIFs heute welcher Seite gehoeren. „fertig" wird fest zugeteilt und

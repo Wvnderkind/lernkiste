@@ -31,6 +31,8 @@
     "allow-im-explorer-zeigen",
     "allow-neuigkeiten",
     "allow-neuigkeiten-gelesen",
-    "allow-anleitung-ausblenden"
+    "allow-anleitung-ausblenden",
+    "allow-sichern-mix",
+    "allow-melden"
   ]
 }

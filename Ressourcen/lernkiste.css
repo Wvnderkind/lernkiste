@@ -255,3 +255,20 @@ footer p{ margin:.3rem 0; }
 
 /* Tagesziel erreicht, aber heutige Wackler noch offen */
 .lk-nachholen b{ color:var(--orange); }
+
+/* --- Melden --- */
+button.lk-melden-knopf{ font-size:12.5px; padding:.35rem .7rem; color:var(--text-dim); }
+button.lk-melden-knopf:hover{ color:var(--text); }
+.lk-meldung{ display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; margin-top:.8rem; }
+.lk-meldung input[type=text]{ flex:1; min-width:12rem; }
+.lk-gemeldet{ font-size:13px; color:var(--text-dim); }
+
+/* --- Probeklausur und Fehlerkiste (mix.html) --- */
+.container.lk-mix{ max-width:none; padding:2px 8px 0; }
+textarea.lk-antwort{
+  width:100%; margin-top:.6rem; font:inherit; font-size:15px; line-height:1.45;
+  background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+  border-radius:8px; padding:.55rem .7rem; resize:vertical;
+}
+textarea.lk-antwort:focus{ outline:none; border-color:var(--accent); }
+[data-teil].teil-gewaehlt{ stroke:var(--accent); stroke-width:3; }

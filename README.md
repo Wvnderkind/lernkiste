@@ -166,6 +166,19 @@ Nein. Der Lernstand hängt an der App, nicht am Dateipfad.
 Ja. Jede Lernseite ist eine einzelne HTML-Datei und funktioniert per Doppelklick auch
 im Browser — nur ohne Startseite, Tagesplan und Fortschrittsübersicht.
 
+**„Wie wiederhole ich gezielt, was nicht sitzt?"**
+Jede Aufgabe hat ihr eigenes Wiederholungsdatum: Richtiges ruht immer länger (1, 3, 7,
+16, 35 Tage), Falsches ist morgen wieder dran. Steht in `konfiguration.json` unter
+`naechsterTermin` eine Prüfung, kommt vorher alles noch einmal. Auf der Startseite steht
+je Fach **Fehlerkiste & Probeklausur**: *Fällige üben* und *Wackler üben* mischen die
+Aufgaben aller Seiten des Fachs, die *Probeklausur* zieht 20, 40 oder 60 Fragen, wahlweise
+mit Uhr, und zeigt die Lösungen erst am Ende als Tabelle.
+
+**„Eine Aufgabe ist falsch. Was tun?"**
+Unter der Aufgabe auf **⚑ Melden** klicken und kurz schreiben, was nicht stimmt. Die
+Meldung landet in `Lernkiste/meldungen.json`, die Startseite zählt die offenen. Claude
+arbeitet sie ab, wenn man sagt: „schau die Meldungen durch".
+
 **„Wie kommt eine neue Fassung der App auf meinen Rechner?"**
 Von selbst. Die App sieht beim Start nach, ob es auf GitHub eine neuere Fassung gibt.
 Wenn ja, erscheint oben rechts der Knopf **Update verfügbar**. Ein Klick, einmal

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Lernkiste</title>
+<link rel="stylesheet" href="/res/tokens.css">
+<!--
+  mix.html — Fehlerkiste und Probeklausur quer ueber alle Seiten eines Fachs.
+  Aufruf: /mix?modus=faellig|wackler|klausur&titel=<Fach>&p=<Pfad>&p=<Pfad>…
+  Jede Seite laeuft unsichtbar in einem eigenen Rahmen (?mix=1); der Motor
+  meldet sich ueber window.LernkisteMix und zeigt nur die angeforderte Aufgabe.
+  Gebucht wird im Speicher der jeweiligen Seite — so zaehlt alles zum Fortschritt.
+-->
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+     font-size:14px;line-height:1.5}
+.huelle{max-width:900px;margin:0 auto;padding:26px 20px 60px}
+.kopf{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap}
+h1{font-size:22px;font-weight:600;margin:0}
+.unter{color:var(--text-dim);font-size:13px;margin:4px 0 0}
+.zurueck{color:var(--text-dim);text-decoration:none;font-size:13px}
+.zurueck:hover{color:var(--accent)}
+.leiste{display:flex;gap:16px;flex-wrap:wrap;align-items:center;background:var(--surface);
+        border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:18px 0 6px;
+        font-size:13.5px;color:var(--text-dim)}
+.leiste b{color:var(--text)}
+.leiste .uhr{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:600;color:var(--text)}
+.leiste .uhr.knapp{color:var(--no)}
+.balken{height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden;margin:0 0 8px}
+.balken i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.rahmen iframe{display:none;width:100%;border:0;height:200px;background:transparent}
+.rahmen iframe.an{display:block}
+.kasten{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+        padding:22px 24px;margin:18px 0}
+.kasten h2{font-size:17px;margin:0 0 8px}
+.kasten p{margin:6px 0}
+.still{color:var(--text-dim);font-size:13px}
+button{font-family:inherit;font-size:13.5px;cursor:pointer;background:var(--surface-2);
+       color:var(--text);border:1px solid var(--line);border-radius:7px;padding:.45rem .9rem}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+button.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+button:disabled{opacity:.45;cursor:default}
+.wahl{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
+label.uhrwahl{display:flex;gap:8px;align-items:center;margin:6px 0 18px;font-size:13.5px}
+label.uhrwahl input[type=number]{width:4.5rem;font:inherit;padding:.3rem .4rem;background:var(--surface-2);
+       color:var(--text);border:1px solid var(--line);border-radius:6px}
+table.ergebnis{width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px}
+table.ergebnis th,table.ergebnis td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+table.ergebnis th{background:var(--surface-2);color:var(--text-dim);font-size:12px;font-weight:600}
+table.ergebnis td.nr{white-space:nowrap;color:var(--text-dim);width:1%}
+table.ergebnis .frage{font-size:12.5px;color:var(--text-dim);margin-top:2px}
+table.ergebnis .frage svg{display:block;max-width:240px;max-height:170px;height:auto;margin:4px 0}
+table.ergebnis .seite{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}
+table.ergebnis td.urteil{white-space:nowrap;text-align:center;width:1%}
+table.ergebnis tr.ok td.urteil{color:var(--ok)}
+table.ergebnis tr.no td.urteil{color:var(--no)}
+table.ergebnis .merke{font-size:12px;color:var(--text-dim);margin-top:4px}
+table.ergebnis td.urteil button{padding:.2rem .55rem;margin:1px}
+.zusammenfassung{font-size:15px;margin:4px 0}
+.zusammenfassung b{font-size:19px}
+.aktion{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.fehlt{color:var(--no);font-size:12.5px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="huelle">
+  <div class="kopf">
+    <div><h1 id="titel">Lernkiste</h1><p class="unter" id="unter"></p></div>
+    <a class="zurueck" href="/start" id="zurueck">← Startseite</a>
+  </div>
+  <div class="leiste" id="leiste" style="display:none"></div>
+  <div class="balken" id="balkenHuelle" style="display:none"><i id="balken"></i></div>
+  <div id="inhalt"><div class="kasten"><p class="still" id="laden">Seiten werden geladen …</p></div></div>
+  <div class="rahmen" id="rahmen"></div>
+</div>
+<script>
+(function () {
+"use strict";
+
+var q = new URLSearchParams(location.search);
+var MODUS = q.get("modus") || "faellig";
+var FACH = q.get("titel") || "";
+var PFADE = q.getAll("p").filter(function (p) { return p; });
+
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function shuffle(a) {
+  a = a.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function bruecke() { return window.Lernkiste || null; }
+
+/* ---- Theme: kommt von der App bzw. dem gespeicherten Wunsch, und jede
+   Aenderung wandert in die Rahmen weiter. ---- */
+(function () {
+  var b = bruecke(), t = b && b.theme;
+  if (!t) { try { t = localStorage.getItem("lern-theme"); } catch (e) {} }
+  document.documentElement.dataset.theme = t || "dark";
+  new MutationObserver(function () {
+    var jetzt = document.documentElement.dataset.theme;
+    seiten.forEach(function (s) {
+      try { s.rahmen.contentDocument.documentElement.dataset.theme = jetzt; } catch (e) {}
+    });
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+
+var NAMEN = { faellig: "Heute fällig", wackler: "Wackelkandidaten", klausur: "Probeklausur" };
+document.title = (FACH ? FACH + " – " : "") + (NAMEN[MODUS] || "Üben");
+$("titel").textContent = (FACH ? FACH + " · " : "") + (NAMEN[MODUS] || "Üben");
+$("unter").textContent = MODUS === "klausur"
+  ? "Gemischte Fragen aus allen Seiten des Fachs. Lösungen gibt es erst am Ende."
+  : MODUS === "wackler"
+  ? "Alles, was beim letzten Mal nicht saß — quer durch das Fach."
+  : "Was laut Wiederholungsplan heute dran ist — quer durch das Fach.";
+
+/* ---- Seiten laden ---- */
+var seiten = [];      // { pfad, rahmen, api, fertig }
+var losGegangen = false;
+
+window.LernkisteMix = {
+  bereit: function (win, api) {
+    seiten.forEach(function (s) {
+      if (s.rahmen.contentWindow === win) { s.api = api; s.fertig = true; }
+    });
+    pruefeGeladen();
+  },
+  hoehe: function (win, h) {
+    seiten.forEach(function (s) {
+      if (s.rahmen.contentWindow === win) s.rahmen.style.height = Math.max(60, h) + "px";
+    });
+  },
+  /* Ueber einen eigenen Takt, damit die Meldung sicher aus der Huelle kommt. */
+  melden: function (eintrag) {
+    var kopie = JSON.parse(JSON.stringify(eintrag));
+    setTimeout(function () {
+      try { var b = bruecke(); if (b && b.melden) b.melden(kopie); } catch (e) {}
+    }, 0);
+  }
+};
+
+function pfadAdresse(p) {
+  return "/seite/" + p.split("/").map(encodeURIComponent).join("/") + "?mix=1";
+}
+
+PFADE.forEach(function (p) {
+  var f = document.createElement("iframe");
+  var s = { pfad: p, rahmen: f, api: null, fertig: false };
+  f.addEventListener("load", function () {
+    /* Seiten ohne Motor melden sich nie — nach kurzer Wartezeit abhaken. */
+    setTimeout(function () { s.fertig = true; pruefeGeladen(); }, 1500);
+  });
+  f.src = pfadAdresse(p);
+  seiten.push(s);
+  $("rahmen").appendChild(f);
+});
+setTimeout(function () { seiten.forEach(function (s) { s.fertig = true; }); pruefeGeladen(); }, 15000);
+if (!PFADE.length) pruefeGeladen();
+
+function pruefeGeladen() {
+  if (losGegangen) return;
+  var bereit = seiten.filter(function (s) { return s.fertig; }).length;
+  if ($("laden")) $("laden").textContent = "Seiten werden geladen … (" + bereit + " / " + seiten.length + ")";
+  if (bereit < seiten.length) return;
+  losGegangen = true;
+  var mitMotor = seiten.filter(function (s) { return s.api; });
+  if (MODUS === "klausur") klausurVorbereiten(mitMotor);
+  else uebenStarten(mitMotor);
+}
+
+function sichern(ergebnis) {
+  try { var b = bruecke(); if (b && b.fertig) b.fertig(ergebnis || null); } catch (e) {}
+}
+
+function zeigeRahmen(s) {
+  seiten.forEach(function (x) { x.rahmen.classList.toggle("an", x === s); });
+}
+function allesVerstecken() {
+  seiten.forEach(function (x) { x.rahmen.classList.remove("an"); });
+}
+/* Die Tastatur gehoert der sichtbaren Aufgabe. Erst nach dem Umschalten der
+   Rahmen fokussieren — ein eben noch versteckter Rahmen nimmt den Fokus nicht an. */
+function fokus(s) {
+  setTimeout(function () {
+    try {
+      s.rahmen.focus();
+      s.rahmen.contentWindow.focus();
+      var feld = s.rahmen.contentDocument.querySelector(
+        "#lkKoerper input:not([disabled]), #lkKoerper textarea:not([disabled])");
+      if (feld) feld.focus({ preventScroll: true });
+    } catch (e) {}
+  }, 30);
+}
+
+/* Landet ein Tastendruck trotzdem in der Huelle (etwa nach einem Klick auf
+   den Rand), wandert er in die sichtbare Aufgabe weiter. */
+document.addEventListener("keydown", function (ev) {
+  var z = ev.target;
+  if (z && (z.tagName === "INPUT" || z.tagName === "TEXTAREA" || z.tagName === "BUTTON")) return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  var s = seiten.filter(function (x) { return x.rahmen.classList.contains("an"); })[0];
+  if (!s) return;
+  try {
+    var doc = s.rahmen.contentDocument;
+    var feld = doc.querySelector("#lkKoerper input:not([disabled]), #lkKoerper textarea:not([disabled])");
+    s.rahmen.contentWindow.focus();
+    if (feld && ev.key.length === 1 && !doc.querySelector("#btnWeiter:not([style*='none'])")) {
+      feld.focus(); feld.value += ev.key; ev.preventDefault(); return;
+    }
+    var kopie = new s.rahmen.contentWindow.KeyboardEvent("keydown",
+      { key: ev.key, code: ev.code, bubbles: true, cancelable: true });
+    (doc.activeElement || doc.body).dispatchEvent(kopie);
+    if (kopie.defaultPrevented) ev.preventDefault();
+  } catch (e) {}
+});
+
+function leiste(html) {
+  var l = $("leiste");
+  if (html === null) { l.style.display = "none"; $("balkenHuelle").style.display = "none"; return; }
+  l.innerHTML = html; l.style.display = "";
+  $("balkenHuelle").style.display = "";
+}
+
+/* ============================================================
+   Fehlerkiste: heute faellig bzw. Wackelkandidaten
+   ============================================================ */
+function uebenStarten(mitMotor) {
+  var liste = [];
+  mitMotor.forEach(function (s) {
+    var k = [];
+    try { k = s.api.kandidaten(); } catch (e) {}
+    k.forEach(function (c) {
+      if (MODUS === "wackler" ? c.wackler : c.faellig) liste.push({ s: s, id: c.id });
+    });
+  });
+  if (!liste.length) {
+    $("inhalt").innerHTML = '<div class="kasten"><h2>'
+      + (MODUS === "wackler" ? "Keine Wackelkandidaten." : "Heute ist nichts fällig.")
+      + "</h2><p class=\"still\">"
+      + (MODUS === "wackler" ? "Alles, was du in diesem Fach geübt hast, saß beim letzten Mal."
+                             : "Alles Geübte ruht gerade. Neue Aufgaben findest du auf den einzelnen Seiten.")
+      + '</p><div class="aktion"><button class="primary" onclick="location.href=\'/start\'">Zur Startseite</button></div></div>';
+    return;
+  }
+  var schlange = shuffle(liste);
+  var gesamt = schlange.length, erledigt = 0, anhieb = 0, versuche = 0;
+  var gesehen = {}, nochmal = {};
+
+  function naechste() {
+    if (!schlange.length) { ende(); return; }
+    var x = schlange.shift();
+    var schluessel = x.s.pfad + "#" + x.id;
+    leiste("Aufgabe <b>" + Math.min(erledigt + 1, gesamt) + " / " + gesamt + "</b>"
+         + "<span>Auf Anhieb richtig: <b>" + anhieb + "</b></span>"
+         + (schlange.length ? "<span>Noch in der Kiste: <b>" + (schlange.length + 1) + "</b></span>" : ""));
+    $("balken").style.width = Math.round(100 * erledigt / gesamt) + "%";
+    $("inhalt").innerHTML = "";
+    zeigeRahmen(x.s);
+    var ok = false;
+    try {
+      ok = x.s.api.zeigen(x.id, "ueben", function (r) {
+        versuche++;
+        var erstes = !gesehen[schluessel];
+        gesehen[schluessel] = true;
+        if (r && r.ok) {
+          if (erstes) anhieb++;
+          erledigt++;
+        } else if ((nochmal[schluessel] || 0) < 2) {
+          /* Was nicht sass, kommt am Ende der Runde noch einmal. */
+          nochmal[schluessel] = (nochmal[schluessel] || 0) + 1;
+          schlange.push(x);
+        } else {
+          erledigt++;
+        }
+        window.scrollTo(0, 0);
+        naechste();
+      });
+    } catch (e) { ok = false; }
+    if (!ok) { erledigt++; naechste(); return; }
+    fokus(x.s);
+    window.scrollTo(0, 0);
+  }
+
+  function ende() {
+    allesVerstecken();
+    leiste(null);
+    var quote = gesamt ? Math.round(100 * anhieb / gesamt) : 0;
+    $("inhalt").innerHTML = '<div class="kasten"><h2>Kiste leer ✓</h2>'
+      + '<p class="zusammenfassung"><b>' + anhieb + " von " + gesamt + "</b> auf Anhieb richtig (" + quote + " %).</p>"
+      + '<p class="still">Was nicht saß, ist morgen wieder fällig. Alles zählt zum Fortschritt der jeweiligen Seite.</p>'
+      + '<div class="aktion"><button class="primary" onclick="location.href=\'/start\'">Zur Startseite</button></div></div>';
+    sichern({ seite: "mix:" + MODUS, ziel: gesamt, geschafft: versuche, treffer: anhieb });
+  }
+  naechste();
+}
+
+/* ============================================================
+   Probeklausur
+   ============================================================ */
+function klausurVorbereiten(mitMotor) {
+  var proSeite = [];
+  mitMotor.forEach(function (s) {
+    var k = [];
+    try { k = s.api.kandidaten(); } catch (e) {}
+    if (k.length) proSeite.push({ s: s, ids: shuffle(k.map(function (c) { return c.id; })) });
+  });
+  var verfuegbar = proSeite.reduce(function (n, x) { return n + x.ids.length; }, 0);
+  if (!verfuegbar) {
+    $("inhalt").innerHTML = '<div class="kasten"><h2>Keine Aufgaben gefunden.</h2>'
+      + '<p class="still">In diesem Fach gibt es noch keine Übungsseiten.</p>'
+      + '<div class="aktion"><button class="primary" onclick="location.href=\'/start\'">Zur Startseite</button></div></div>';
+    return;
+  }
+  var groessen = [20, 40, 60].filter(function (n) { return n <= verfuegbar; });
+  if (!groessen.length || verfuegbar < 60) groessen.push(verfuegbar);
+  var gewaehlt = groessen[0];
+
+  $("inhalt").innerHTML = '<div class="kasten"><h2>Probeklausur einstellen</h2>'
+    + '<p class="still">' + verfuegbar + " Aufgaben aus " + proSeite.length + " Seiten stehen zur Wahl. "
+    + "Die Fragen werden gleichmäßig aus allen Seiten gezogen.</p>"
+    + '<p style="margin-top:14px">Wie viele Fragen?</p><div class="wahl" id="anzahl"></div>'
+    + '<label class="uhrwahl"><input type="checkbox" id="mitUhr"> Mit Uhr: '
+    + '<input type="number" id="minuten" min="1" max="240"> Minuten</label>'
+    + '<div class="aktion"><button class="primary" id="los">Klausur starten</button></div></div>';
+
+  function minutenFuer(n) { return Math.max(5, Math.round(n * 1.5)); }
+  function knoepfe() {
+    var box = $("anzahl");
+    box.innerHTML = "";
+    groessen.forEach(function (n) {
+      var b = document.createElement("button");
+      b.textContent = n === verfuegbar && [20, 40, 60].indexOf(n) < 0 ? "Alle (" + n + ")" : String(n);
+      if (n === gewaehlt) b.className = "active";
+      b.addEventListener("click", function () {
+        gewaehlt = n; $("minuten").value = minutenFuer(n); knoepfe();
+      });
+      box.appendChild(b);
+    });
+  }
+  knoepfe();
+  $("minuten").value = minutenFuer(gewaehlt);
+  $("minuten").addEventListener("input", function () { $("mitUhr").checked = true; });
+  $("los").addEventListener("click", function () {
+    var minuten = $("mitUhr").checked ? Math.max(1, parseInt($("minuten").value, 10) || minutenFuer(gewaehlt)) : 0;
+    /* Reihum aus jeder Seite eine Aufgabe, bis die Anzahl steht. */
+    var zug = [], toepfe = shuffle(proSeite).map(function (x) { return { s: x.s, ids: x.ids.slice() }; });
+    while (zug.length < gewaehlt) {
+      var genommen = false;
+      toepfe.forEach(function (t) {
+        if (zug.length < gewaehlt && t.ids.length) { zug.push({ s: t.s, id: t.ids.shift() }); genommen = true; }
+      });
+      if (!genommen) break;
+    }
+    klausurLaufen(shuffle(zug), minuten);
+  });
+}
+
+function klausurLaufen(zug, minuten) {
+  var antworten = new Array(zug.length);   // null = nicht bearbeitet
+  var i = 0, ende = minuten ? Date.now() + minuten * 60000 : 0, uhr = null, vorbei = false;
+
+  function restText() {
+    var ms = Math.max(0, ende - Date.now()), s = Math.ceil(ms / 1000);
+    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  }
+  function leisteZeichnen() {
+    leiste("Frage <b>" + Math.min(i + 1, zug.length) + " / " + zug.length + "</b>"
+         + (ende ? '<span class="uhr" id="uhr">⏱ ' + restText() + "</span>" : "")
+         + '<button id="abgeben">Abgeben</button>');
+    $("abgeben").addEventListener("click", function () {
+      if (confirm("Klausur jetzt abgeben? Unbeantwortete Fragen zählen als nicht bearbeitet.")) abschliessen();
+    });
+    $("balken").style.width = Math.round(100 * i / zug.length) + "%";
+  }
+  if (ende) {
+    uhr = setInterval(function () {
+      var el = $("uhr");
+      if (el) { el.textContent = "⏱ " + restText(); el.classList.toggle("knapp", ende - Date.now() < 60000); }
+      if (Date.now() >= ende) abschliessen();
+    }, 500);
+  }
+
+  function naechste() {
+    if (vorbei) return;
+    if (i >= zug.length) { abschliessen(); return; }
+    var x = zug[i];
+    leisteZeichnen();
+    $("inhalt").innerHTML = "";
+    zeigeRahmen(x.s);
+    var ok = false;
+    try {
+      ok = x.s.api.zeigen(x.id, "klausur", function (r) {
+        if (vorbei) return;
+        antworten[i] = r;
+        i++;
+        window.scrollTo(0, 0);
+        naechste();
+      });
+    } catch (e) { ok = false; }
+    if (!ok) { antworten[i] = null; i++; naechste(); return; }
+    fokus(x.s);
+    window.scrollTo(0, 0);
+  }
+
+  function abschliessen() {
+    if (vorbei) return;
+    vorbei = true;
+    if (uhr) clearInterval(uhr);
+    if (i < zug.length) { try { zug[i].s.api.leeren(); } catch (e) {} }
+    allesVerstecken();
+    leiste(null);
+    auswerten(zug, antworten);
+  }
+  naechste();
+}
+
+function auswerten(zug, antworten) {
+  var gespeichert = false;
+
+  function zeichnen() {
+    var richtig = 0, bewertet = 0, offen = 0, bearbeitet = 0;
+    antworten.forEach(function (r) {
+      if (!r) return;
+      bearbeitet++;
+      if (r.ok === null) { offen++; return; }
+      bewertet++;
+      if (r.ok) richtig++;
+    });
+    var quote = zug.length ? Math.round(100 * richtig / zug.length) : 0;
+    var html = '<div class="kasten"><h2>Auswertung</h2>'
+      + '<p class="zusammenfassung"><b>' + richtig + " / " + zug.length + "</b> richtig (" + quote + " %)"
+      + (bearbeitet < zug.length ? " · " + (zug.length - bearbeitet) + " nicht bearbeitet" : "") + "</p>"
+      + (offen ? '<p class="still">Noch ' + offen + " Karteikarte" + (offen === 1 ? "" : "n")
+               + " selbst bewerten: Antwort vergleichen, dann ✓ oder ✗.</p>" : "")
+      + '<table class="ergebnis"><thead><tr><th>F</th><th>Du</th><th>Richtig</th><th>✅/❌</th></tr></thead><tbody>';
+    zug.forEach(function (x, n) {
+      var r = antworten[n];
+      var titel = "";
+      try { titel = x.s.api.titel; } catch (e) {}
+      var klasse = !r ? "" : r.ok === true ? "ok" : r.ok === false ? "no" : "";
+      html += '<tr class="' + klasse + '"><td class="nr"><b>' + (n + 1) + "</b></td>";
+      if (!r) {
+        html += '<td colspan="2"><div class="seite">' + esc(titel) + '</div><span class="still">nicht bearbeitet</span></td><td class="urteil">—</td></tr>';
+        return;
+      }
+      html += "<td><div class=\"seite\">" + esc(titel) + '</div><div class="frage">' + r.frage + "</div>"
+            + "<div>" + (r.du ? esc(r.du) : '<span class="still">(leer)</span>') + "</div></td>"
+            + "<td>" + r.loesung + (r.merke && r.ok !== true ? '<div class="merke">' + r.merke + "</div>" : "") + "</td>"
+            + '<td class="urteil">';
+      if (r.ok === null || r.selbst) {
+        html += '<button data-n="' + n + '" data-w="1"' + (r.ok === true ? ' class="active"' : "") + (gespeichert ? " disabled" : "") + ">✓</button>"
+              + '<button data-n="' + n + '" data-w="0"' + (r.ok === false ? ' class="active"' : "") + (gespeichert ? " disabled" : "") + ">✗</button>";
+      } else {
+        html += r.ok ? "✅" : "❌";
+      }
+      html += "</td></tr>";
+    });
+    html += "</tbody></table>"
+      + '<div class="aktion"><button class="primary" id="speichern"' + (offen || gespeichert ? " disabled" : "") + ">"
+      + (gespeichert ? "Gespeichert ✓" : "Ergebnis speichern") + "</button>"
+      + '<button onclick="location.href=\'/start\'">Zur Startseite</button>'
+      + (offen && !gespeichert ? '<span class="still">Erst alle Karteikarten bewerten.</span>' : "")
+      + (gespeichert ? '<span class="still">Zählt jetzt zum Fortschritt der einzelnen Seiten.</span>'
+                     : '<span class="still">Erst beim Speichern zählt das Ergebnis zum Fortschritt.</span>')
+      + "</div></div>";
+    $("inhalt").innerHTML = html;
+
+    Array.prototype.forEach.call(document.querySelectorAll("td.urteil button"), function (b) {
+      b.addEventListener("click", function () {
+        var r = antworten[+b.getAttribute("data-n")];
+        r.selbst = true;
+        r.ok = b.getAttribute("data-w") === "1";
+        zeichnen();
+      });
+    });
+    var sp = $("speichern");
+    if (sp && !sp.disabled) sp.addEventListener("click", function () {
+      var richtigAnzahl = 0, gebucht = 0;
+      zug.forEach(function (x, n) {
+        var r = antworten[n];
+        if (!r || r.ok === null) return;
+        try { x.s.api.buchen(r.id, r.ok); gebucht++; if (r.ok) richtigAnzahl++; } catch (e) {}
+      });
+      gespeichert = true;
+      sichern({ seite: "mix:klausur", ziel: zug.length, geschafft: gebucht, treffer: richtigAnzahl });
+      zeichnen();
+    });
+  }
+  zeichnen();
+  window.scrollTo(0, 0);
+}
+})();
+</script>
+</body>
+</html>

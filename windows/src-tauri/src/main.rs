@@ -11,6 +11,7 @@ mod export;
 mod fortschritt;
 mod import;
 mod kern;
+mod meldungen;
 mod neuigkeiten;
 mod orte;
 mod server;
@@ -87,6 +88,8 @@ fn main() {
             neuigkeiten,
             neuigkeiten_gelesen,
             anleitung_ausblenden,
+            sichern_mix,
+            melden,
         ])
         .setup(move |app| {
             log::info!("Lernkiste {} startet (Stand {})", app.package_info().version, orte::stand());
@@ -487,6 +490,29 @@ fn sichern(kern: KernZ, id: String, roh: HashMap<String, String>) -> bool {
     let stand = fortschritt::auswerten(&roh, &seite);
     fortschritt::sichern(&stand);
     stand.tagespensum.as_ref().map(|t| t.erledigt()).unwrap_or(false)
+}
+
+/// Nach Fehlerkiste oder Probeklausur: den Stand aller beteiligten Seiten
+/// ablegen. Nie geuebte Seiten bekommen keine leere Datei, und „zuletzt
+/// geoeffnet" bleibt, wie es war — geoeffnet wurde ja nur die Mischung.
+#[tauri::command]
+fn sichern_mix(kern: KernZ, ids: Vec<String>, roh: HashMap<String, String>) {
+    let vorher = fortschritt::alle_staende();
+    for id in ids {
+        let Some(seite) = kern.seite(&id) else { continue };
+        let mut stand = fortschritt::auswerten(&roh, &seite);
+        if stand.roh.is_empty() {
+            continue;
+        }
+        stand.zuletzt_geoeffnet = vorher.get(&id).and_then(|s| s.zuletzt_geoeffnet.clone());
+        fortschritt::sichern(&stand);
+    }
+}
+
+/// „⚑ Melden“ aus einer Aufgabe: landet in meldungen.json.
+#[tauri::command]
+fn melden(eintrag: Value) {
+    meldungen::anhaengen(eintrag);
 }
 
 #[tauri::command]
