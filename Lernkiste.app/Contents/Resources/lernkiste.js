@@ -500,6 +500,27 @@ function start(cfg) {
 
   var eig = Eigene.load();
 
+  /* Ein neuer Tagesplan darf seine Auswahl einmal ueberschreiben: Beim ersten
+     Oeffnen gelten Kategorien, Umfang und Richtung aus dem Plan. Klickt er
+     danach selbst um, bleibt seine Wahl — bis wieder ein anderer Plan kommt.
+     Erkannt wird ein neuer Plan am Stempel aus Datum und Planfeldern.
+     "stand" im Plan-Eintrag erzwingt das erneut, auch bei gleichem Inhalt
+     (wenn er sagt: "ueberschreib meine Auswahl"). */
+  var planFelder = {};
+  ["kategorien", "kategorie", "umfang", "variante", "stand"].forEach(function (f) {
+    if (plan[f] !== undefined && plan[f] !== null) planFelder[f] = plan[f];
+  });
+  if (Object.keys(planFelder).length) {
+    var stempel = heuteStr() + " " + JSON.stringify(planFelder);
+    if (eig.planStempel !== stempel) {
+      if (planFelder.kategorien !== undefined || planFelder.kategorie !== undefined) delete eig.kategorie;
+      if (planFelder.umfang !== undefined) delete eig.umfang;
+      if (planFelder.variante !== undefined) delete eig.variante;
+      eig.planStempel = stempel;
+      try { localStorage.setItem(EKEY, JSON.stringify(eig)); } catch (e) {}
+    }
+  }
+
   /* Kategorie: seine Wahl, sonst plan.kategorien, sonst ein schwerpunkt, der
      zufaellig genau eine Kategorie benennt. Alles, was die Seite nicht kennt,
      faellt weg — "schwerpunkt" ist meist nur ein Beschreibungstext, und ein
