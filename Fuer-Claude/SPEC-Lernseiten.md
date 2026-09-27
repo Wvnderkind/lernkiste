@@ -307,6 +307,8 @@ Regeln dazu:
   „Trotzdem weiterüben", „Fortschritt zurücksetzen", Filter- und Modus-Knöpfe.
 - Ein Rechenweg in Schritten darf mit Enter durchgeblättert werden.
 - Enter darf den Fortschritt nie anders zählen als ein Mausklick auf denselben Knopf.
+- **Zahlentasten (Motor):** Bei Auswahlfragen (`wahl`) wählt 1–9 die Antwort mit dieser
+  Nummer, Enter prüft. Bei einer aufgedeckten Karteikarte ist 1 = „saß“, 2 = „saß nicht“.
 
 ## 7 — Verboten
 

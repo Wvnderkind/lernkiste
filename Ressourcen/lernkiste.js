@@ -610,6 +610,7 @@ function geruestBauen() {
   }
   klappbarMachen();
   enterEinhaengen();
+  zahlenEinhaengen();
   tippenUmleiten();
 }
 
@@ -676,6 +677,7 @@ function mixStarten(standard) {
   document.body.insertBefore(huelle, document.body.firstChild);
   document.body.style.padding = "0";
   enterEinhaengen();
+  zahlenEinhaengen();
   tippenUmleiten();
 
   function hoeheMelden() {
@@ -1082,9 +1084,9 @@ function aufgabeZeichnen(it) {
     + '<div id="lkErgebnis"></div>'
     + '<div class="weiter-zeile no-print">'
     +   '<div class="selfcheck" id="lkSelbst" style="display:none;">'
-    +     '<span class="info">Und ehrlich?</span>'
-    +     '<button class="ok-btn" id="btnSass">saß</button>'
-    +     '<button class="no-btn" id="btnSassNicht">saß nicht</button>'
+    +     '<span class="info">Und ehrlich?' + (it.art === "karte" ? ' <span class="lk-tasten">Taste 1 / 2</span>' : "") + '</span>'
+    +     '<button class="ok-btn" id="btnSass"' + (it.art === "karte" ? ' title="Taste 1"' : "") + '>saß</button>'
+    +     '<button class="no-btn" id="btnSassNicht"' + (it.art === "karte" ? ' title="Taste 2"' : "") + '>saß nicht</button>'
     +   "</div>"
     +   (meldenGeht() ? '<button type="button" class="ghost lk-melden-knopf" id="btnMelden" '
                       + 'title="Stimmt an dieser Aufgabe etwas nicht? Kurz melden.">⚑ Melden</button>' : "")
@@ -1311,6 +1313,27 @@ function enterEinhaengen() {
     var ziel = ev.target;
     if (ziel && (ziel.tagName === "TEXTAREA" || ziel.isContentEditable)) return;
     if (klick("#btnWeiter") || klick("#btnPruefen")) ev.preventDefault();
+  });
+}
+
+/* Zahlentasten: bei Auswahlfragen waehlt 1–9 die Antwort mit dieser Nummer
+   (pruefen bleibt bei Enter, so ist ein Vertipper noch zu korrigieren).
+   Bei einer aufgedeckten Karteikarte ist 1 = saß, 2 = saß nicht. */
+function zahlenEinhaengen() {
+  function sichtbar(el) { return !!el && !el.disabled && el.offsetParent !== null; }
+  document.addEventListener("keydown", function (ev) {
+    if (!/^[1-9]$/.test(ev.key) || ev.repeat || ev.isComposing) return;
+    if (ev.altKey || ev.metaKey || ev.ctrlKey || !jetzt) return;
+    var ziel = ev.target;
+    if (ziel && (ziel.tagName === "INPUT" || ziel.tagName === "TEXTAREA"
+                 || ziel.tagName === "SELECT" || ziel.isContentEditable)) return;
+    var n = Number(ev.key), knopf = null;
+    if (jetzt.art === "wahl" && !geprueft) {
+      knopf = document.querySelectorAll("#lkWahl .wahl-option")[n - 1];
+    } else if (jetzt.art === "karte" && geprueft && n <= 2) {
+      knopf = $(n === 1 ? "btnSass" : "btnSassNicht");
+    }
+    if (sichtbar(knopf)) { knopf.click(); ev.preventDefault(); }
   });
 }
 
