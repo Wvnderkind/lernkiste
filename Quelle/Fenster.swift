@@ -324,12 +324,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         let konfig = WKWebViewConfiguration()
         konfig.websiteDataStore = .default()
         konfig.userContentController.add(self, name: "lernkiste")
-        konfig.userContentController.addUserScript(
-            WKUserScript(source: bruecke(), injectionTime: .atDocumentStart,
-                         forMainFrameOnly: true))
-        konfig.userContentController.addUserScript(
-            WKUserScript(source: markierungsStil(), injectionTime: .atDocumentStart,
-                         forMainFrameOnly: true))
+        skripteEinsetzen(in: konfig.userContentController)
 
         web = WKWebView(frame: .zero, configuration: konfig)
         web.navigationDelegate = self
@@ -542,6 +537,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
             let html = startseiteBauen()
             if html != gezeigteStartseite {
                 gezeigteStartseite = html
+                skripteAuffrischen()
                 web.load(URLRequest(url: URL(string: "\(Server.basis)/start")!))
             }
         }
@@ -668,6 +664,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         sternKnopf.isHidden = true
         auswahlAngleichen()
         gezeigteStartseite = startseiteBauen()
+        skripteAuffrischen()
         web.load(URLRequest(url: URL(string: "\(Server.basis)/start")!))
     }
 
@@ -726,6 +723,7 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         let pfad = seite.relativerPfad
             .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? seite.relativerPfad
         guard let url = URL(string: "\(Server.basis)/seite/\(pfad)") else { return }
+        skripteAuffrischen()
         web.load(URLRequest(url: url))
         liste.reloadData()
         auswahlAngleichen()
@@ -808,6 +806,25 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     /// immer ganze Zeilen des umgebenden Kastens — das lief quer ueber das Fenster.
     /// Eingabefelder bleiben ausgenommen, sonst koennte man dort nichts korrigieren.
     /// Die Restauswahl (Feldinhalt) wird grau statt system-blau gezeichnet.
+    /// Bruecke und Markierungsstil tragen Tagesplan und Theme fest im Text.
+    /// Deshalb vor jedem Laden neu einsetzen — sonst sieht eine Seite noch den
+    /// Plan vom App-Start, auch wenn tagesplan.json laengst neu ist.
+    private func skripteEinsetzen(in steuerung: WKUserContentController) {
+        steuerung.removeAllUserScripts()
+        steuerung.addUserScript(
+            WKUserScript(source: bruecke(), injectionTime: .atDocumentStart,
+                         forMainFrameOnly: true))
+        steuerung.addUserScript(
+            WKUserScript(source: markierungsStil(), injectionTime: .atDocumentStart,
+                         forMainFrameOnly: true))
+    }
+
+    /// Tagesplan frisch lesen und die Skripte fuer die naechste Seite erneuern.
+    private func skripteAuffrischen() {
+        plan = Tagesplan.laden()
+        skripteEinsetzen(in: web.configuration.userContentController)
+    }
+
     private func markierungsStil() -> String {
         """
         (function(){
