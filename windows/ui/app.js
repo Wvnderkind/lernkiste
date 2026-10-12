@@ -448,6 +448,17 @@
   document.addEventListener('keydown', function (e) {
     if (!e.ctrlKey || e.altKey || e.metaKey) return;
     var k = (e.key || '').toLowerCase(), aktion = null;
+    /* Strg+Z ausserhalb der Lernseite (z. B. nach einem Klick in die Leiste):
+       die letzte Antwort zuruecknehmen. Im Suchfeld bleibt es beim Text. */
+    if (k === 'z' && !e.shiftKey) {
+      var z = e.target;
+      if (z && (z.tagName === 'INPUT' || z.tagName === 'TEXTAREA')) return;
+      try {
+        var w = rahmen.contentWindow;
+        if (w && w.Lernseite && w.Lernseite.rueckgaengig && w.Lernseite.rueckgaengig()) e.preventDefault();
+      } catch (err) {}
+      return;
+    }
     if (k === 'r' && !e.shiftKey) aktion = 'neu_einlesen';
     else if (k === 'f' && !e.shiftKey) aktion = 'suchen';
     else if (k === 'o' && !e.shiftKey) aktion = 'importieren';

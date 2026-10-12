@@ -1083,6 +1083,22 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         sternKnopf.contentTintColor = an ? .systemOrange : nil
     }
 
+    // MARK: Widerrufen
+
+    /// Bearbeiten > Widerrufen (Cmd-Z). Auf einer Lernseite nimmt es die letzte
+    /// Antwort zurueck; hat die Seite nichts zurueckzunehmen (oder steht Text im
+    /// Antwortfeld), gilt das normale Widerrufen — ebenso im Suchfeld.
+    func widerrufen(_ sender: Any?) {
+        let normal = { _ = NSApp.sendAction(Selector(("undo:")), to: nil, from: sender) }
+        guard let antwortet = window?.firstResponder as? NSView,
+              antwortet === web || antwortet.isDescendant(of: web) else { normal(); return }
+        web.evaluateJavaScript(
+            "(window.Lernseite && Lernseite.rueckgaengig) ? !!Lernseite.rueckgaengig() : false"
+        ) { ergebnis, _ in
+            if (ergebnis as? Bool) != true { normal() }
+        }
+    }
+
     // MARK: Suche
 
     /// Setzt den Schreibcursor ins Suchfeld — ueber Bearbeiten > Suchen (Cmd-F).

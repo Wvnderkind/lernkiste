@@ -125,6 +125,8 @@ $("unter").textContent = MODUS === "klausur"
 /* ---- Seiten laden ---- */
 var seiten = [];      // { pfad, rahmen, api, fertig }
 var losGegangen = false;
+/* Rueckgaengig der laufenden Runde: { kann(), los(), vergessen() } */
+var zurueck = { kann: function () { return false; }, los: function () { return false; }, vergessen: function () {} };
 
 window.LernkisteMix = {
   bereit: function (win, api) {
@@ -138,6 +140,9 @@ window.LernkisteMix = {
       if (s.rahmen.contentWindow === win) s.rahmen.style.height = Math.max(60, h) + "px";
     });
   },
+  kannZurueck: function () { return zurueck.kann(); },
+  rueckgaengig: function () { return zurueck.los(); },
+  vergessen: function () { zurueck.vergessen(); },
   /* Ueber einen eigenen Takt, damit die Meldung sicher aus der Huelle kommt. */
   melden: function (eintrag) {
     var kopie = JSON.parse(JSON.stringify(eintrag));
@@ -204,9 +209,14 @@ function fokus(s) {
    den Rand), wandert er in die sichtbare Aufgabe weiter. */
 document.addEventListener("keydown", function (ev) {
   var z = ev.target;
+  if ((ev.metaKey || ev.ctrlKey) && !ev.shiftKey && !ev.altKey && (ev.key || "").toLowerCase() === "z") {
+    if (z && (z.tagName === "INPUT" || z.tagName === "TEXTAREA") && z.value) return;
+    if (rueckgaengig()) ev.preventDefault();
+    return;
+  }
   if (z && (z.tagName === "INPUT" || z.tagName === "TEXTAREA" || z.tagName === "BUTTON")) return;
   if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
-  var s = seiten.filter(function (x) { return x.rahmen.classList.contains("an"); })[0];
+  var s = sichtbareSeite();
   if (!s) return;
   try {
     var doc = s.rahmen.contentDocument;
@@ -221,6 +231,28 @@ document.addEventListener("keydown", function (ev) {
     if (kopie.defaultPrevented) ev.preventDefault();
   } catch (e) {}
 });
+
+function sichtbareSeite() {
+  return seiten.filter(function (x) { return x.rahmen.classList.contains("an"); })[0];
+}
+
+/* ⌘Z / Strg+Z oder Knopf: zuerst darf die sichtbare Aufgabe selbst (noch
+   ungebucht geprueft), sonst nimmt die Runde die letzte Aufgabe zurueck. */
+function rueckgaengig() {
+  var s = sichtbareSeite();
+  if (s && s.api && s.api.rueckgaengig) { try { return !!s.api.rueckgaengig(); } catch (e) { return false; } }
+  return zurueck.los();
+}
+/* Fuer die App (Menue Bearbeiten → Widerrufen). */
+window.Lernseite = { rueckgaengig: rueckgaengig };
+
+function zurueckKnopf() {
+  return zurueck.kann() ? '<button id="zurueck" title="Letzte Antwort zurücknehmen">↶ Rückgängig</button>' : "";
+}
+function zurueckKnopfVerdrahten() {
+  var b = $("zurueck");
+  if (b) b.addEventListener("click", function () { rueckgaengig(); });
+}
 
 function leiste(html) {
   var l = $("leiste");
@@ -238,7 +270,7 @@ function uebenStarten(mitMotor) {
     var k = [];
     try { k = s.api.kandidaten(); } catch (e) {}
     k.forEach(function (c) {
-      if (MODUS === "wackler" ? c.wackler : c.faellig) liste.push({ s: s, id: c.id });
+      if (MODUS === "wackler" ? c.wackler : c.faellig) liste.push({ s: s, id: c.id, gewicht: c.gewicht });
     });
   });
   if (!liste.length) {
@@ -250,13 +282,38 @@ function uebenStarten(mitMotor) {
       + '</p><div class="aktion"><button class="primary" onclick="location.href=\'/start\'">Zur Startseite</button></div></div>';
     return;
   }
-  var schlange = shuffle(liste);
+  /* Das Schwaechste eher zuerst (Gewicht vom Motor der jeweiligen Seite), leicht gemischt. */
+  var schlange = liste.map(function (x) {
+    return { x: x, k: Math.pow(Math.random(), 1 / Math.max(0.01, x.gewicht || 1)) };
+  }).sort(function (a, b) { return b.k - a.k; }).map(function (o) { return o.x; });
   var gesamt = schlange.length, erledigt = 0, anhieb = 0, versuche = 0;
   var gesehen = {}, nochmal = {};
+  var vorher = null, aktuell = null;   // Stand vor der letzten Aufgabe (Rueckgaengig)
+
+  zurueck = {
+    kann: function () { return !!vorher; },
+    vergessen: function () { vorher = null; },
+    los: function () {
+      if (!vorher) return false;
+      var v = vorher;
+      vorher = null;
+      if (aktuell && aktuell.s !== v.x.s) { try { aktuell.s.api.leeren(); } catch (e) {} }
+      try { v.x.s.api.zuruecknehmen(); } catch (e) {}
+      schlange = v.schlange; erledigt = v.erledigt; anhieb = v.anhieb; versuche = v.versuche;
+      gesehen = v.gesehen; nochmal = v.nochmal;
+      window.scrollTo(0, 0);
+      zeige(v.x);
+      return true;
+    }
+  };
 
   function naechste() {
     if (!schlange.length) { ende(); return; }
-    var x = schlange.shift();
+    zeige(schlange.shift());
+  }
+
+  function zeige(x) {
+    aktuell = x;
     var schluessel = x.s.pfad + "#" + x.id;
     leiste("Aufgabe <b>" + Math.min(erledigt + 1, gesamt) + " / " + gesamt + "</b>"
          + "<span>Auf Anhieb richtig: <b>" + anhieb + "</b></span>"
@@ -267,6 +324,8 @@ function uebenStarten(mitMotor) {
     var ok = false;
     try {
       ok = x.s.api.zeigen(x.id, "ueben", function (r) {
+        vorher = { x: x, schlange: schlange.slice(), erledigt: erledigt, anhieb: anhieb, versuche: versuche,
+                   gesehen: JSON.parse(JSON.stringify(gesehen)), nochmal: JSON.parse(JSON.stringify(nochmal)) };
         versuche++;
         var erstes = !gesehen[schluessel];
         gesehen[schluessel] = true;
@@ -274,9 +333,9 @@ function uebenStarten(mitMotor) {
           if (erstes) anhieb++;
           erledigt++;
         } else if ((nochmal[schluessel] || 0) < 2) {
-          /* Was nicht sass, kommt am Ende der Runde noch einmal. */
+          /* Was nicht sass, kommt nach drei bis fuenf anderen Aufgaben noch einmal. */
           nochmal[schluessel] = (nochmal[schluessel] || 0) + 1;
-          schlange.push(x);
+          schlange.splice(Math.min(schlange.length, 3 + Math.floor(Math.random() * 3)), 0, x);
         } else {
           erledigt++;
         }
@@ -284,19 +343,22 @@ function uebenStarten(mitMotor) {
         naechste();
       });
     } catch (e) { ok = false; }
-    if (!ok) { erledigt++; naechste(); return; }
+    if (!ok) { vorher = null; erledigt++; naechste(); return; }
     fokus(x.s);
     window.scrollTo(0, 0);
   }
 
   function ende() {
+    aktuell = null;
     allesVerstecken();
     leiste(null);
     var quote = gesamt ? Math.round(100 * anhieb / gesamt) : 0;
     $("inhalt").innerHTML = '<div class="kasten"><h2>Kiste leer ✓</h2>'
       + '<p class="zusammenfassung"><b>' + anhieb + " von " + gesamt + "</b> auf Anhieb richtig (" + quote + " %).</p>"
       + '<p class="still">Was nicht saß, ist morgen wieder fällig. Alles zählt zum Fortschritt der jeweiligen Seite.</p>'
-      + '<div class="aktion"><button class="primary" onclick="location.href=\'/start\'">Zur Startseite</button></div></div>';
+      + '<div class="aktion"><button class="primary" onclick="location.href=\'/start\'">Zur Startseite</button>'
+      + zurueckKnopf() + "</div></div>";
+    zurueckKnopfVerdrahten();
     sichern({ seite: "mix:" + MODUS, ziel: gesamt, geschafft: versuche, treffer: anhieb });
   }
   naechste();
@@ -366,6 +428,22 @@ function klausurVorbereiten(mitMotor) {
 function klausurLaufen(zug, minuten) {
   var antworten = new Array(zug.length);   // null = nicht bearbeitet
   var i = 0, ende = minuten ? Date.now() + minuten * 60000 : 0, uhr = null, vorbei = false;
+  var zurueckGeht = false;   // genau eine Frage zurueck, bis die naechste abgegeben ist
+
+  zurueck = {
+    kann: function () { return zurueckGeht && !vorbei && i > 0; },
+    vergessen: function () {},
+    los: function () {
+      if (!zurueck.kann()) return false;
+      zurueckGeht = false;
+      if (i < zug.length) { try { zug[i].s.api.leeren(); } catch (e) {} }
+      i--;
+      antworten[i] = undefined;
+      window.scrollTo(0, 0);
+      naechste();
+      return true;
+    }
+  };
 
   function restText() {
     var ms = Math.max(0, ende - Date.now()), s = Math.ceil(ms / 1000);
@@ -401,11 +479,12 @@ function klausurLaufen(zug, minuten) {
         if (vorbei) return;
         antworten[i] = r;
         i++;
+        zurueckGeht = true;
         window.scrollTo(0, 0);
         naechste();
       });
     } catch (e) { ok = false; }
-    if (!ok) { antworten[i] = null; i++; naechste(); return; }
+    if (!ok) { antworten[i] = null; i++; zurueckGeht = false; naechste(); return; }
     fokus(x.s);
     window.scrollTo(0, 0);
   }
@@ -413,6 +492,7 @@ function klausurLaufen(zug, minuten) {
   function abschliessen() {
     if (vorbei) return;
     vorbei = true;
+    zurueck = { kann: function () { return false; }, los: function () { return false; }, vergessen: function () {} };
     if (uhr) clearInterval(uhr);
     if (i < zug.length) { try { zug[i].s.api.leeren(); } catch (e) {} }
     allesVerstecken();

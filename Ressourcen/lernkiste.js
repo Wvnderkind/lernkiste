@@ -188,6 +188,7 @@ var umfang = null;       // gewaehlter Umfang (zweite Filterebene)
 var weiterUeben = false; // Tagespensum geschafft, er uebt trotzdem weiter
 var mixModus = null;     // im Misch-Modus: "ueben" | "klausur"
 var mixRueckruf = null;  // meldet der Huelle, wie die Aufgabe ausging
+var rueck = null;        // Stand vor der letzten gebuchten Antwort (Rueckgaengig)
 
 /* ------------------------------------------------------------
    Speicher (genau ein Schluessel, Format laut Vertrag)
@@ -611,6 +612,7 @@ function geruestBauen() {
   klappbarMachen();
   enterEinhaengen();
   zahlenEinhaengen();
+  rueckEinhaengen();
   tippenUmleiten();
 }
 
@@ -678,6 +680,7 @@ function mixStarten(standard) {
   document.body.style.padding = "0";
   enterEinhaengen();
   zahlenEinhaengen();
+  rueckEinhaengen();
   tippenUmleiten();
 
   function hoeheMelden() {
@@ -698,7 +701,7 @@ function mixStarten(standard) {
         var st = Store.load(), heute = heuteStr();
         return alleItems.map(function (it) {
           var e = st.items[it.id];
-          return { id: it.id, art: it.art, neu: !e,
+          return { id: it.id, art: it.art, neu: !e, gewicht: gewicht(e),
                    faellig: !!e && istFaellig(e, heute),
                    wackler: !!e && e.letzter === "sassNicht" };
         });
@@ -722,7 +725,11 @@ function mixStarten(standard) {
         warWackler = !!e && e.letzter === "sassNicht";
         buchen(it, !!richtig);
       },
-      leeren: function () { $("lkHaupt").innerHTML = ""; jetzt = null; mixRueckruf = null; }
+      leeren: function () { $("lkHaupt").innerHTML = ""; jetzt = null; mixRueckruf = null; },
+      /* Rueckgaengig: erst die eigene, noch ungebuchte Pruefung; sonst fragt der Motor die Huelle. */
+      rueckgaengig: rueckgaengigVonAussen,
+      /* Die Huelle holt die zuletzt hier gebuchte Aufgabe zurueck: Speicher wie vorher. */
+      zuruecknehmen: function () { return buchungZuruecknehmen(); }
     });
   } catch (e) {}
 }
@@ -887,25 +894,77 @@ function auswahlBauen() {
     return true;
   });
   schlange = [];
+  rueck = null;
+}
+
+/* Wie dringend eine Aufgabe wieder dran sollte. Oft falsch, zuletzt falsch
+   und eine niedrige Stufe heben das Gewicht; Neues zaehlt 1. */
+function gewicht(e) {
+  if (!e) return 1;
+  var falsch = e.sassNicht || 0, richtig = e.sass || 0;
+  var quote = (falsch + 1) / (falsch + richtig + 2);
+  var stufe = Math.min(stufeVon(e), LEITER.length - 1);
+  var w = (1 + 4 * quote) * (1 + (LEITER.length - 1 - stufe) / 2);
+  if (e.letzter === "sassNicht") w *= 3;
+  return w;
+}
+
+/* Sitzt sicher: oberste Stufe erreicht oder vielfach richtig bei kaum Fehlern. */
+function sitztSicher(e) {
+  if (!e || e.letzter !== "sass") return false;
+  if (stufeVon(e) >= LEITER.length - 1) return true;
+  return (e.sass || 0) >= 6 && (e.sassNicht || 0) * 4 <= (e.sass || 0);
+}
+
+/* Mischen mit Gewicht: Schweres landet eher vorn, bleibt aber nicht starr
+   in derselben Reihenfolge (Efraimidis-Spirakis). */
+function gewichtetMischen(liste, wvon) {
+  return liste.map(function (x) {
+    return { x: x, k: Math.pow(Math.random(), 1 / Math.max(0.01, wvon(x))) };
+  }).sort(function (a, b) { return b.k - a.k; }).map(function (o) { return o.x; });
+}
+
+function rundeBauen() {
+  var s = Store.load(), heute = heuteStr();
+  /* Vorn: was heute faellig ist und alle Wackelkandidaten, das Schwaechste
+     zuerst. Dann Neues, dann der Rest nach Gewicht. Was sicher sitzt, kommt
+     nur als kleine Stichprobe ganz hinten — ausser es gibt sonst nichts. */
+  var vorn = [], neu = [], rest = [], sicher = [];
+  aktiv.forEach(function (it) {
+    var e = s.items[it.id];
+    if (!e) neu.push(it);
+    else if (istFaellig(e, heute) || e.letzter === "sassNicht") vorn.push(it);
+    else if (sitztSicher(e)) sicher.push(it);
+    else rest.push(it);
+  });
+  function w(it) { return gewicht(s.items[it.id]); }
+  sicher = shuffle(sicher);
+  if (vorn.length + neu.length + rest.length) sicher = sicher.slice(0, Math.ceil(sicher.length / 5));
+  return gewichtetMischen(vorn, w).concat(shuffle(neu), gewichtetMischen(rest, w), sicher);
 }
 
 function schlangeFuellen() {
-  var s = Store.load(), heute = heuteStr();
-  /* Erst was heute faellig ist, dann Neues, dann der Rest. */
-  var faellig = [], neu = [], rest = [];
-  aktiv.forEach(function (it) {
-    var e = s.items[it.id];
-    var topf = !e ? neu : istFaellig(e, heute) ? faellig : rest;
-    topf.push(it);
-    /* Wackelkandidaten kommen in einer Runde zweimal dran — sie sind ja der Grund,
-       warum man ueberhaupt nochmal uebt. */
-    if (e && e.letzter === "sassNicht") topf.push(it);
-  });
-  schlange = shuffle(faellig).concat(shuffle(neu), shuffle(rest));
+  schlange = rundeBauen();
   /* Nicht dasselbe Item zweimal hintereinander. */
   if (jetzt && schlange.length > 1 && schlange[0].id === jetzt.id) {
     var t = schlange[0]; schlange[0] = schlange[1]; schlange[1] = t;
   }
+}
+
+/* Falsch beantwortet: nach drei bis fuenf anderen Aufgaben noch einmal —
+   nicht mehr im Kurzzeitgedaechtnis, aber noch frisch. */
+function wiedervorlegen(id) {
+  var it = null;
+  aktiv.forEach(function (x) { if (x.id === id) it = x; });
+  if (!it) return;
+  schlange = schlange.filter(function (x) { return x.id !== id; });
+  if (schlange.length < 5) {
+    var drin = {};
+    schlange.forEach(function (x) { drin[x.id] = true; });
+    schlange = schlange.concat(rundeBauen().filter(function (x) { return x.id !== id && !drin[x.id]; }));
+  }
+  var pos = Math.min(schlange.length, 3 + Math.floor(Math.random() * 3));
+  schlange.splice(pos, 0, it);
 }
 
 /* Heute falsch beantwortete Aufgaben muessen heute noch zweimal hintereinander
@@ -1090,6 +1149,8 @@ function aufgabeZeichnen(it) {
     +   "</div>"
     +   (meldenGeht() ? '<button type="button" class="ghost lk-melden-knopf" id="btnMelden" '
                       + 'title="Stimmt an dieser Aufgabe etwas nicht? Kurz melden.">⚑ Melden</button>' : "")
+    +   '<button type="button" class="ghost lk-zurueck-knopf" id="btnZurueck" style="display:none;" '
+    +     'title="Letzte Antwort zurücknehmen (' + RUECK_TASTE + ')">↶ Rückgängig</button>'
     +   '<div style="flex:1"></div>'
     +   '<button class="primary" id="btnPruefen">'
     +     (klausurLaeuft() ? "Weiter" : it.art === "karte" ? "Aufdecken" : "Prüfen") + "</button>"
@@ -1112,6 +1173,8 @@ function aufgabeZeichnen(it) {
   $("btnSass").addEventListener("click", function () { selbst("sass"); });
   $("btnSassNicht").addEventListener("click", function () { selbst("sassNicht"); });
   if ($("btnMelden")) $("btnMelden").addEventListener("click", meldenOeffnen);
+  $("btnZurueck").addEventListener("click", function () { rueckgaengig(); });
+  zurueckKnopf();
 
   /* Fokus nur, wenn das Feld schon ganz im Bild ist. WebKit (die Engine der
      App) holt den Cursor eines fokussierten Feldes kurz darauf trotz
@@ -1173,6 +1236,10 @@ function pruefen() {
   var ergebnis = art.pruefen(jetzt, $("lkKoerper"));
   geprueft = true;
   $("btnPruefen").style.display = "none";
+  /* Rueckgaengig gilt immer nur fuer die letzte Aufgabe — ab jetzt fuer diese. */
+  rueck = null;
+  if (MIX) { try { MIX.vergessen(); } catch (e) {} }
+  zurueckKnopf();
 
   if (ergebnis.richtig === null) {
     /* Karteikarte: das Urteil faellt er selbst. Erst danach geht es weiter. */
@@ -1211,7 +1278,11 @@ function markiereWahl() {
 
 function weiter() {
   if (!geprueft || !jetzt || !wahl) return;
+  rueck = { item: jetzt, store: JSON.stringify(Store.load()), serie: serie,
+            fehl: JSON.stringify(fehl), warWackler: warWackler,
+            schlange: schlange.slice(), weiterUeben: weiterUeben };
   buchen(jetzt, wahl === "sass");
+  if (!MIX && wahl !== "sass") wiedervorlegen(jetzt.id);
   if (MIX) {
     var r = { id: jetzt.id, ok: wahl === "sass" };
     $("lkHaupt").innerHTML = "";
@@ -1282,11 +1353,14 @@ function fertigSchirm() {
     +   '<div class="fertig-quote">' + tp.treffer + " von " + tp.geschafft + "</div>"
     +   "<p>Aufgaben auf Anhieb richtig &mdash; das sind " + quote + " %.</p>"
     +   '<button class="ghost no-print" id="btnTrotzdem">Trotzdem weiterüben</button>'
+    +   (rueck ? ' <button class="ghost no-print lk-zurueck-knopf" id="btnZurueck" '
+              + 'title="Letzte Antwort zurücknehmen (' + RUECK_TASTE + ')">↶ Rückgängig</button>' : "")
     + "</div>";
   $("btnTrotzdem").addEventListener("click", function () {
     weiterUeben = true;
     weiterMachen();
   });
+  if ($("btnZurueck")) $("btnZurueck").addEventListener("click", function () { rueckgaengig(); });
 
   try {
     if (global.Lernkiste && global.Lernkiste.fertig) {
@@ -1334,6 +1408,75 @@ function zahlenEinhaengen() {
       knopf = $(n === 1 ? "btnSass" : "btnSassNicht");
     }
     if (sichtbar(knopf)) { knopf.click(); ev.preventDefault(); }
+  });
+}
+
+/* ------------------------------------------------------------
+   Rueckgaengig (⌘Z / Strg+Z oder Knopf): genau ein Schritt zurueck.
+   - Schon geprueft, aber noch nicht weiter: dieselbe Aufgabe frisch.
+   - Schon weiter: die Buchung der letzten Aufgabe faellt weg
+     (Fortschritt, Faelligkeit, Tagespensum) und sie kommt erneut.
+   Im Misch-Modus fuehrt die Huelle die Runde, sie macht den zweiten Fall.
+   ------------------------------------------------------------ */
+var RUECK_TASTE = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘Z" : "Strg+Z";
+
+function kannZurueck() {
+  if (geprueft && jetzt && !klausurLaeuft()) return true;
+  if (MIX) { try { return !!MIX.kannZurueck(); } catch (e) { return false; } }
+  return !!rueck;
+}
+
+function zurueckKnopf() {
+  var b = $("btnZurueck");
+  if (b) b.style.display = kannZurueck() ? "" : "none";
+}
+
+function rueckgaengig() {
+  if (geprueft && jetzt && !klausurLaeuft()) {
+    geprueft = false; wahl = null;
+    aufgabeZeichnen(jetzt);
+    return true;
+  }
+  if (MIX) { try { return !!MIX.rueckgaengig(); } catch (e) { return false; } }
+  var r = rueck;
+  if (!buchungZuruecknehmen()) return false;
+  schlange = r.schlange;
+  weiterUeben = r.weiterUeben;
+  jetzt = r.item;
+  geprueft = false; wahl = null;
+  kopfZeichnen();
+  aufgabeZeichnen(jetzt);
+  return true;
+}
+
+function buchungZuruecknehmen() {
+  var r = rueck;
+  if (!r) return false;
+  rueck = null;
+  Store.save(JSON.parse(r.store));
+  serie = r.serie;
+  fehl = JSON.parse(r.fehl);
+  warWackler = r.warWackler;
+  return true;
+}
+
+/* Steht im fokussierten Feld schon Text, gehoert ⌘Z dem Feld (Tippfehler zuruecknehmen). */
+function feldHatText(z) {
+  z = z || document.activeElement;
+  if (!z || geprueft) return false;
+  var feld = z.tagName === "TEXTAREA" || z.isContentEditable
+          || (z.tagName === "INPUT" && !/^(checkbox|radio|button|submit)$/.test(z.type));
+  return feld && !!(z.isContentEditable ? z.textContent : z.value);
+}
+
+/* Von aussen (App-Menue, Huelle): wie die Taste, also Textfelder zuerst. */
+function rueckgaengigVonAussen() { return !feldHatText() && rueckgaengig(); }
+
+function rueckEinhaengen() {
+  document.addEventListener("keydown", function (ev) {
+    if ((ev.key || "").toLowerCase() !== "z" || ev.shiftKey || ev.altKey || ev.isComposing) return;
+    if (!(ev.metaKey || ev.ctrlKey) || feldHatText(ev.target)) return;
+    if (rueckgaengig()) ev.preventDefault();
   });
 }
 
@@ -1569,6 +1712,8 @@ ARTEN.wahl = {
 /* ------------------------------------------------------------ */
 global.Lernseite = {
   start: start, heuteStr: heuteStr, shuffle: shuffle,
+  /* Fuer die App (Menue Bearbeiten → Widerrufen): true, wenn etwas zurueckgenommen wurde. */
+  rueckgaengig: function () { return K ? rueckgaengigVonAussen() : false; },
   /* Fuer die Startseite: wann ein gespeicherter Eintrag wieder dran ist. */
   faelligkeit: faelligkeit, istFaellig: istFaellig, LEITER: LEITER.slice(),
   /* Fuer Agenten und Tests: liefert die Baufehler als Liste, leer = alles gut. */

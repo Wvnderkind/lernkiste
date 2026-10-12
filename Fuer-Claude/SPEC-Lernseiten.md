@@ -309,6 +309,8 @@ Regeln dazu:
 - Enter darf den Fortschritt nie anders zählen als ein Mausklick auf denselben Knopf.
 - **Zahlentasten (Motor):** Bei Auswahlfragen (`wahl`) wählt 1–9 die Antwort mit dieser
   Nummer, Enter prüft. Bei einer aufgedeckten Karteikarte ist 1 = „saß“, 2 = „saß nicht“.
+- **Rückgängig (Motor):** ⌘Z / Strg+Z nimmt die letzte Antwort samt Buchung zurück
+  (Kapitel „Rückgängig“). Seiten bauen dafür nichts selbst.
 
 ## 7 — Verboten
 
@@ -410,7 +412,7 @@ nur, wenn es mehr als eine Kategorie gibt.
 
 Fortschrittsblock mit Trefferquote und Wackelkandidaten · Balken · Filter nach
 Kategorie und „Nur meine Wackelkandidaten" · „Fortschritt zurücksetzen" ·
-Wackelkandidaten kommen in derselben Runde doppelt dran · Enter nach dem Vertrag
+Reihenfolge nach Schwäche (siehe unten) · Rückgängig (⌘Z / Strg+Z) · Enter nach dem Vertrag
 aus Kapitel 6 · Speichern nach Kapitel 2 und 3 · GIFs und Abschlussbildschirm nach
 Kapitel 5. Die Seite muss davon **nichts** selbst bauen.
 
@@ -430,7 +432,7 @@ Kachel „Fehlerkiste & Probeklausur" mit „Heute fällig: N aus M Seiten" und
 `?mix=1` lädt und ihre Aufgaben mischt:
 
 - **Fällige üben / Wackler üben:** quer durch alle Seiten des Fachs; Falsches
-  kommt in derselben Runde bis zu zweimal wieder.
+  kommt in derselben Runde bis zu zweimal wieder, jeweils nach 3–5 anderen Aufgaben.
 - **Probeklausur:** 20 / 40 / 60 Aufgaben (oder alle, wenn es weniger sind),
   Uhr wahlweise (1,5 min je Aufgabe). Lösungen erst am Ende als Tabelle
   F | Du | Richtig | ✅/❌; Karteikarten bekommen ein Textfeld und werden am
@@ -438,6 +440,30 @@ Kachel „Fehlerkiste & Probeklausur" mit „Heute fällig: N aus M Seiten" und
   Fortschritt der einzelnen Seiten.
 
 Das funktioniert mit **jeder** Motor-Seite, ohne dass sie etwas dafür tun muss.
+
+### Reihenfolge beim Üben
+
+Fällige Aufgaben und Wackelkandidaten kommen zuerst, danach neue, dann der Rest.
+Innerhalb jeder Gruppe zieht der Motor **gewichtet nach Schwäche**: Je höher die
+Fehlerquote, je niedriger die Stufe der Fälligkeits-Leiter und je frischer der
+letzte Fehler, desto weiter vorn landet eine Aufgabe. Aufgaben, die **sicher
+sitzen** (zuletzt richtig und oberste Stufe der Leiter, oder mindestens 6× richtig
+bei höchstens jedem fünften Versuch falsch), kommen nur noch als kleine Stichprobe
+ganz hinten dran (etwa ein Fünftel). Das gilt auch für „Trotzdem weiterüben“.
+
+Wer eine Aufgabe falsch beantwortet, sieht sie nach **3–5 anderen Aufgaben**
+wieder, nicht sofort und nicht erst am Ende. Das gilt auf der Seite und in
+„Fällige üben“ / „Wackler üben“ (dort bis zu zweimal). Die **Probeklausur**
+bleibt bewusst zufällig gemischt, weil sie eine echte Klausur nachstellt.
+
+### Rückgängig
+
+⌘Z (Mac) bzw. Strg+Z (Windows) oder der Knopf „↶ Rückgängig“ nimmt die letzte
+Antwort zurück: Die Aufgabe steht wieder unbeantwortet da, und Fortschritt,
+Fälligkeit und Tagespensum sind wie vorher. Das geht vor und nach „Weiter“, aber
+nur für die letzte Aufgabe. In der Probeklausur springt Rückgängig zur vorigen
+Frage. Steht der Cursor in einem Textfeld mit Inhalt, bleibt ⌘Z das normale
+Text-Rückgängig.
 Voraussetzung: die Aufgabe steckt vollständig in `bauen`/`items` (keine
 Zusatz-Logik außerhalb des Motors) und eine `svg`-Frage kommt ohne Seiten-CSS
 aus, das nur per Klasse greift — für die Ergebnistabelle werden die sichtbaren

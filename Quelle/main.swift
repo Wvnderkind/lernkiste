@@ -48,6 +48,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func neuLaden() { fenster?.bibliothekNeuLaden() }
 
     @objc func sucheFokussieren() { fenster?.sucheFokussieren() }
+    @objc func widerrufen(_ sender: Any?) {
+        if let f = fenster { f.widerrufen(sender) } else { NSApp.sendAction(Selector(("undo:")), to: nil, from: sender) }
+    }
 
     @objc func seitenOrdnerOeffnen() {
         NSWorkspace.shared.open(Orte.seiten)
@@ -119,7 +122,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Bearbeiten (damit Kopieren/Einfügen/Suchen in der Seite funktionieren)
         let bearbItem = NSMenuItem()
         let bearbMenu = NSMenu(title: "Bearbeiten")
-        bearbMenu.addItem(withTitle: "Widerrufen", action: Selector(("undo:")), keyEquivalent: "z")
+        let widerrufen = NSMenuItem(title: "Widerrufen", action: #selector(widerrufen(_:)), keyEquivalent: "z")
+        widerrufen.target = self
+        bearbMenu.addItem(widerrufen)
         bearbMenu.addItem(withTitle: "Wiederholen", action: Selector(("redo:")), keyEquivalent: "Z")
         bearbMenu.addItem(.separator())
         bearbMenu.addItem(withTitle: "Ausschneiden", action: #selector(NSText.cut(_:)), keyEquivalent: "x")

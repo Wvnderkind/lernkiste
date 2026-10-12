@@ -258,8 +258,8 @@ footer p{ margin:.3rem 0; }
 .lk-nachholen b{ color:var(--orange); }
 
 /* --- Melden --- */
-button.lk-melden-knopf{ font-size:12.5px; padding:.35rem .7rem; color:var(--text-dim); }
-button.lk-melden-knopf:hover{ color:var(--text); }
+button.lk-melden-knopf, button.lk-zurueck-knopf{ font-size:12.5px; padding:.35rem .7rem; color:var(--text-dim); }
+button.lk-melden-knopf:hover, button.lk-zurueck-knopf:hover{ color:var(--text); }
 .lk-meldung{ display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; margin-top:.8rem; }
 .lk-meldung input[type=text]{ flex:1; min-width:12rem; }
 .lk-gemeldet{ font-size:13px; color:var(--text-dim); }

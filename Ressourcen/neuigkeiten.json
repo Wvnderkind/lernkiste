@@ -1,5 +1,12 @@
 [
   {
+    "datum": "2026-10-12",
+    "punkte": [
+      "Rückgängig: Falsch geklickt? ⌘Z (Mac) bzw. Strg+Z (Windows) oder der Knopf „↶ Rückgängig“ nimmt die letzte Antwort zurück, auch nach „Weiter“. Fortschritt und Tagespensum stehen dann wieder wie vorher. In der Probeklausur geht es so zur vorigen Frage zurück.",
+      "Klügere Reihenfolge: Aufgaben, die oft danebengehen, kommen öfter und weiter vorn dran. Was falsch war, kommt nach 3–5 anderen Aufgaben noch einmal. Was sicher sitzt, taucht nur noch selten als Stichprobe auf. Das gilt auf den Seiten und in der Fehlerkiste, die Probeklausur bleibt zufällig gemischt."
+    ]
+  },
+  {
     "datum": "2026-09-27",
     "punkte": [
       "Auswahlfragen gehen jetzt auch mit der Tastatur: Die Zahlentasten 1–5 wählen die Antwort mit dieser Nummer, Enter prüft, Enter noch einmal geht weiter.",
