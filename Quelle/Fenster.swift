@@ -817,6 +817,10 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         steuerung.addUserScript(
             WKUserScript(source: markierungsStil(), injectionTime: .atDocumentStart,
                          forMainFrameOnly: true))
+        // Auch in eingebetteten Seiten (Mix-Hülle), sonst greift das Zurueck dort.
+        steuerung.addUserScript(
+            WKUserScript(source: loeschtasteSperre(), injectionTime: .atDocumentStart,
+                         forMainFrameOnly: false))
     }
 
     /// Tagesplan frisch lesen und die Skripte fuer die naechste Seite erneuern.
@@ -847,6 +851,22 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
           window.addEventListener('scroll', melden, {passive:true});
           window.addEventListener('load', melden);
           document.addEventListener('DOMContentLoaded', melden);
+        })();
+        """
+    }
+
+    /// WebKit wertet die Loeschtaste ausserhalb von Textfeldern als „Zurueck"
+    /// im Verlauf — ein Vertipper ueber Enter warf einen auf die vorige Seite.
+    /// In Feldern loescht sie weiter ganz normal.
+    private func loeschtasteSperre() -> String {
+        """
+        (function(){
+          window.addEventListener('keydown', function(e){
+            if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+            var z = e.target;
+            if (z && (z.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(z.tagName))) return;
+            e.preventDefault();
+          }, true);
         })();
         """
     }

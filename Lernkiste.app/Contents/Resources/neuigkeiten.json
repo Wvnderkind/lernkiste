@@ -1,5 +1,11 @@
 [
   {
+    "datum": "2026-10-15",
+    "punkte": [
+      "[mac] Die Löschtaste wirft dich nicht mehr auf die vorige Seite zurück. Außerhalb von Eingabefeldern tut sie jetzt einfach nichts, in Feldern löscht sie wie gewohnt."
+    ]
+  },
+  {
     "datum": "2026-10-12",
     "punkte": [
       "Rückgängig: Falsch geklickt? ⌘Z (Mac) bzw. Strg+Z (Windows) oder der Knopf „↶ Rückgängig“ nimmt die letzte Antwort zurück, auch nach „Weiter“. Fortschritt und Tagespensum stehen dann wieder wie vorher. In der Probeklausur geht es so zur vorigen Frage zurück.",
