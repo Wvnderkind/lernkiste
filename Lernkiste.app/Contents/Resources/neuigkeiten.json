@@ -1,5 +1,11 @@
 [
   {
+    "datum": "2026-10-21",
+    "punkte": [
+      "Kopieren: Fragen, Hinweise, Tipps, Merke-Kästen, Lösungswege und Antworten lassen sich jetzt mit der Maus markieren und mit ⌘C (Mac) bzw. Strg+C (Windows) kopieren. Knöpfe und der Rest der Seite bleiben wie gewohnt unmarkierbar."
+    ]
+  },
+  {
     "datum": "2026-10-15",
     "punkte": [
       "[mac] Die Löschtaste wirft dich nicht mehr auf die vorige Seite zurück. Außerhalb von Eingabefeldern tut sie jetzt einfach nichts, in Feldern löscht sie wie gewohnt."

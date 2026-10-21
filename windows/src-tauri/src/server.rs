@@ -225,6 +225,7 @@ fn bruecke_js(kern: &Kern) -> String {
   s.textContent =
       'html,body{{-webkit-user-select:none;user-select:none}}'
     + 'input,textarea,[contenteditable="true"]{{-webkit-user-select:text;user-select:text}}'
+    + '.frage,.hinweis-klein,.begruendung,.steps,.ergebnis,.merksatz,.merk,.box-inhalt,.lk-tabelle .loesung,.hint,.hint-text,.quiz-hint,.sechint,.syn-hint,.explain,.quiz-feedback,.detail-merksatz,details>:not(summary){{-webkit-user-select:text;user-select:text}}'
     + '::selection{{background:rgba(255,255,255,.16)}}'
     + ':root[data-theme="light"] ::selection{{background:rgba(0,0,0,.12)}}';
   document.documentElement.appendChild(s);
