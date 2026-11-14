@@ -319,6 +319,13 @@ fn menue_bauen(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     #[cfg(not(target_os = "macos"))]
     let bearbeiten = Submenu::with_items(app, "Bearbeiten", true, &[&suchen])?;
 
+    let ansicht = Submenu::with_items(
+        app,
+        "Ansicht",
+        true,
+        &[&eintrag("leiste", "Seitenleiste ein-/ausblenden", Some("CmdOrCtrl+Shift+S"))?],
+    )?;
+
     let hilfe = Submenu::with_items(
         app,
         "Hilfe",
@@ -338,10 +345,10 @@ fn menue_bauen(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
             true,
             &[&PredefinedMenuItem::hide(app, None)?, &PredefinedMenuItem::quit(app, None)?],
         )?;
-        return Menu::with_items(app, &[&programm, &datei, &bearbeiten, &hilfe]);
+        return Menu::with_items(app, &[&programm, &datei, &bearbeiten, &ansicht, &hilfe]);
     }
     #[cfg(not(target_os = "macos"))]
-    Menu::with_items(app, &[&datei, &bearbeiten, &hilfe])
+    Menu::with_items(app, &[&datei, &bearbeiten, &ansicht, &hilfe])
 }
 
 /// Menuepunkt und Tastenkuerzel (aus der Seite gemeldet) koennen beide
@@ -376,6 +383,9 @@ fn menue_ausfuehren(app: &AppHandle, name: &str) {
         }
         "bauanleitung" => import::bauanleitung_kopieren(app),
         "beenden" => schliessen_einleiten(app),
+        "leiste" => {
+            let _ = app.emit_to("haupt", "leiste_umschalten", ());
+        }
         "suchen" => {
             fenster_nach_vorn(app);
             let _ = app.emit_to("haupt", "suche_fokus", ());

@@ -48,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func neuLaden() { fenster?.bibliothekNeuLaden() }
 
     @objc func sucheFokussieren() { fenster?.sucheFokussieren() }
+    @objc func leisteUmschalten() { fenster?.leisteUmschalten() }
     @objc func widerrufen(_ sender: Any?) {
         if let f = fenster { f.widerrufen(sender) } else { NSApp.sendAction(Selector(("undo:")), to: nil, from: sender) }
     }
@@ -137,6 +138,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         bearbMenu.addItem(suchen)
         bearbItem.submenu = bearbMenu
         haupt.addItem(bearbItem)
+
+        // Darstellung
+        let darstItem = NSMenuItem()
+        let darstMenu = NSMenu(title: "Darstellung")
+        let leiste = NSMenuItem(title: "Seitenleiste ein-/ausblenden",
+                                action: #selector(leisteUmschalten), keyEquivalent: "s")
+        leiste.keyEquivalentModifierMask = [.control, .command]   // macOS-Standard
+        leiste.target = self
+        darstMenu.addItem(leiste)
+        darstItem.submenu = darstMenu
+        haupt.addItem(darstItem)
 
         // Fenster
         let fensterItem = NSMenuItem()

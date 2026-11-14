@@ -438,6 +438,7 @@
 
   function taste(aktion) {
     if (aktion === 'suchen') { sucheFokus(); return; }
+    if (aktion === 'leiste') { leisteUmschalten(); return; }
     invoke('menue_aktion', { name: aktion }).catch(function () {});
   }
   function sucheFokus() {
@@ -459,6 +460,7 @@
       } catch (err) {}
       return;
     }
+    if (k === 's' && e.shiftKey) { e.preventDefault(); leisteUmschalten(); return; }
     if (k === 'r' && !e.shiftKey) aktion = 'neu_einlesen';
     else if (k === 'f' && !e.shiftKey) aktion = 'suchen';
     else if (k === 'o' && !e.shiftKey) aktion = 'importieren';
@@ -502,6 +504,7 @@
   listen('seite_oeffnen', function (e) { if (typeof e.payload === 'string') oeffnenPerId(e.payload); });
   listen('ort_fragen', function (e) { ortFragen(e.payload || {}); });
   listen('suche_fokus', sucheFokus);
+  listen('leiste_umschalten', function () { leisteUmschalten(); });
   listen('exportieren_bitte', function () {
     invoke('exportieren', { ids: aktuell ? [aktuell.id] : [], name: aktuell ? aktuell.titel : '' }).catch(function () {});
   });
@@ -540,6 +543,16 @@
     invoke('update_installieren').catch(function () {});
   });
   rahmen.addEventListener('load', rahmenGeladen);
+
+  // Leiste ein-/ausklappen: Knopf im Kopf, Ansicht-Menue oder Strg+Umschalt+S.
+  // Der Zustand wird pro Rechner gemerkt.
+  function leisteUmschalten(zu) {
+    if (typeof zu !== 'boolean') zu = !document.body.classList.contains('leiste-zu');
+    document.body.classList.toggle('leiste-zu', zu);
+    try { localStorage.setItem('app:leiste-zu', zu ? '1' : ''); } catch (e) {}
+  }
+  try { if (localStorage.getItem('app:leiste-zu') === '1') leisteUmschalten(true); } catch (e) {}
+  $('leistenknopf').addEventListener('click', function () { leisteUmschalten(); });
 
   // Breite der Leiste ziehen (230–340 px), pro Rechner gemerkt.
   (function () {

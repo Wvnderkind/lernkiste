@@ -181,6 +181,8 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
     private var seitenleisteHG: SeitenleistenHintergrund!
     private var trenner: NSBox!
     private var kopfOben: NSLayoutConstraint!
+    private var kopf: NSStackView!
+    private var leiste: NSSplitViewItem!
 
     // MARK: Aufbau
 
@@ -385,7 +387,13 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         updateKnopf.toolTip = "Neue Fassung der Lernkiste installieren"
         updateKnopf.isHidden = true
 
-        let kopf = NSStackView(views: [texte, NSView(), updateKnopf, sternKnopf, infoKnopf, themaKnopf])
+        let leistenKnopf = NSButton(image: NSImage(systemSymbolName: "sidebar.left",
+                                                   accessibilityDescription: "Seitenleiste")!,
+                                    target: self, action: #selector(leisteUmschalten))
+        leistenKnopf.isBordered = false
+        leistenKnopf.toolTip = "Seitenleiste ein-/ausblenden (⌃⌘S)"
+
+        kopf = NSStackView(views: [leistenKnopf, texte, NSView(), updateKnopf, sternKnopf, infoKnopf, themaKnopf])
         kopf.orientation = .horizontal
         kopf.spacing = 10
         kopf.edgeInsets = NSEdgeInsets(top: 5, left: 8, bottom: 10, right: 14)
@@ -429,6 +437,14 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         let rechtsItem = NSSplitViewItem(viewController: huelle(rechts))
         teiler.addSplitViewItem(linksItem)
         teiler.addSplitViewItem(rechtsItem)
+        leiste = linksItem
+        // Wie beim letzten Mal verlassen: eingeklappt bleibt eingeklappt.
+        linksItem.isCollapsed = UserDefaults.standard.bool(forKey: "LeisteEingeklappt")
+        kopfEinruecken()
+        // Auch Zuziehen per Maus am Rand zaehlt — dann Kopf nachziehen und merken.
+        NotificationCenter.default.addObserver(self, selector: #selector(leisteGeaendert),
+                                               name: NSSplitView.didResizeSubviewsNotification,
+                                               object: teiler.splitView)
 
         fenster.contentViewController = teiler
         // Bewusst NICHT das Suchfeld: der Schreibcursor soll beim Start nicht dort
@@ -446,11 +462,42 @@ final class Fenster: NSWindowController, NSOutlineViewDataSource, NSOutlineViewD
         standardAufklappen()
     }
 
+    // MARK: Seitenleiste
+
+    /// Klappt die Leiste links ein oder aus — Knopf im Kopf, Menue oder ⌃⌘S.
+    @objc func leisteUmschalten() {
+        guard let leiste else { return }
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.2
+            ctx.allowsImplicitAnimation = true
+            leiste.animator().isCollapsed.toggle()
+        }
+    }
+
+    @objc private func leisteGeaendert() {
+        guard let leiste else { return }
+        let zu = leiste.isCollapsed
+        if UserDefaults.standard.bool(forKey: "LeisteEingeklappt") != zu {
+            UserDefaults.standard.set(zu, forKey: "LeisteEingeklappt")
+        }
+        kopfEinruecken()
+    }
+
+    /// Ist die Leiste zu, rutscht der Kopf an den linken Fensterrand — dort
+    /// sitzen die Ampelknoepfe. Dann Platz fuer sie lassen (nicht im Vollbild).
+    private func kopfEinruecken() {
+        guard let kopf, let leiste, let fenster = window else { return }
+        let ampel = leiste.isCollapsed && !fenster.styleMask.contains(.fullScreen)
+        let links: CGFloat = ampel ? 78 : 8
+        if kopf.edgeInsets.left != links { kopf.edgeInsets.left = links }
+    }
+
     @objc private func kopfAbstandAngleichen() {
         guard let fenster = window else { return }
         let vollbild = fenster.styleMask.contains(.fullScreen)
         let sicher = fenster.contentView?.safeAreaInsets.top ?? 0
         kopfOben.constant = vollbild ? 12 + sicher : 12
+        kopfEinruecken()
     }
 
     /// Die Trennlinie zwischen Kopf und Lernseite blendet sich ein, sobald die

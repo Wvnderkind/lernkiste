@@ -14,7 +14,7 @@ Eine Seite ist erst fertig, wenn sie **besser ist als das Lehrbuchkapitel zum se
 
 **Qualität vor Tempo.** Du darfst dir lange Zeit nehmen. Plane, baue, prüfe im Browser, korrigiere — und melde dich erst, wenn die Seite wirklich sitzt. Eine halbfertige Seite in fünf Minuten ist wertlos; eine richtig gute in vierzig Minuten ist genau der Auftrag.
 
-**Erfinde nichts.** Fachinhalt kommt aus den übergebenen Informationen oder aus den Quelldateien des Fachs. Wenn dir für einen Punkt die Grundlage fehlt: Punkt weglassen oder sichtbar als „ungeprüft" markieren — niemals plausibel klingend dazuerfinden. Wenn ein Fachprofil eine Hauptquelle nennt
+**Erfinde nichts.** Fachinhalt kommt aus den übergebenen Informationen oder aus den Quelldateien des Fachs. Wenn dir für einen Punkt die Grundlage fehlt: Punkt weglassen oder sichtbar als „ungeprüft" markieren — niemals plausibel klingend dazuerfinden. Inhalte aus dem **Internet** auf der Seite sichtbar markieren: „🌐 Internet (Quelle: …)“; Folien/Lehrbuch brauchen keine Markierung. Was nur aus deinem Trainingswissen stammt, als „⚠️ ungeprüft“ kennzeichnen. Wenn ein Fachprofil eine Hauptquelle nennt
 (z. B. ein bestimmtes Lehrbuch), richte dich danach.
 
 ---

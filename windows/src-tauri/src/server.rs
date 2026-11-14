@@ -271,6 +271,7 @@ fn bruecke_js(kern: &Kern) -> String {
     else if (k === 'f' && !e.shiftKey) aktion = 'suchen';
     else if (k === 'o' && !e.shiftKey) aktion = 'importieren';
     else if (k === 'v' && e.shiftKey) aktion = 'zwischenablage';
+    else if (k === 's' && e.shiftKey) aktion = 'leiste';
     if (!aktion) return;
     e.preventDefault(); e.stopPropagation();
     sende({{art:'taste', aktion: aktion}});
