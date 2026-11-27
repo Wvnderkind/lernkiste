@@ -10,11 +10,19 @@ echo "→ altes Bundle aufräumen"
 rm -rf "$APP"
 mkdir -p "$ZIEL/MacOS" "$ZIEL/Resources"
 
-echo "→ Swift übersetzen"
-swiftc -O -o "$ZIEL/MacOS/Lernkiste" \
-  Quelle/Modell.swift Quelle/Server.swift Quelle/Fortschritt.swift \
-  Quelle/Startseite.swift Quelle/Fenster.swift Quelle/Import.swift Quelle/Export.swift Quelle/Neuigkeiten.swift Quelle/Updater.swift \
-  Quelle/main.swift
+echo "→ Swift übersetzen (ab macOS 13, für Apple-Chip und Intel)"
+# Ohne -target nimmt swiftc das eigene macOS als Mindestversion — die App
+# liefe dann nur auf dem neuesten System. Darum fest macOS 13, wie in der
+# Info.plist, und beide Prozessorarten in einer Datei ("Universal").
+QUELLEN=(Quelle/Modell.swift Quelle/Server.swift Quelle/Fortschritt.swift
+  Quelle/Startseite.swift Quelle/Fenster.swift Quelle/Import.swift Quelle/Export.swift Quelle/Neuigkeiten.swift Quelle/Updater.swift
+  Quelle/main.swift)
+BAU="$(mktemp -d)"
+for ARCH in arm64 x86_64; do
+  swiftc -O -target "$ARCH-apple-macos13.0" -o "$BAU/Lernkiste-$ARCH" "${QUELLEN[@]}"
+done
+lipo -create "$BAU/Lernkiste-arm64" "$BAU/Lernkiste-x86_64" -output "$ZIEL/MacOS/Lernkiste"
+rm -rf "$BAU"
 
 echo "→ Ressourcen kopieren"
 cp Ressourcen/tokens.css "$ZIEL/Resources/"
